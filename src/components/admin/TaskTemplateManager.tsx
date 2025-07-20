@@ -59,15 +59,35 @@ export const TaskTemplateManager: React.FC = () => {
     try {
       setLoading(true);
       
-      console.log('🔍 Fetching clients from profiles table...');
+      console.log('🔍 Fetching clients using admin function...');
       
-      // Fetch clients from profiles table - only clients with approved/active status
-      const { data: clientsData, error: clientsError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'client')
-        .in('status', ['approved', 'active', 'pending'])
-        .order('created_at', { ascending: false });
+      // Check if this is the hardcoded admin
+      const isHardcodedAdmin = currentUserProfile?.email === 'darwin@komento.asia' && currentUserProfile?.id === 'admin-hardcoded-id';
+      
+      let clientsData;
+      let clientsError;
+      
+      if (isHardcodedAdmin) {
+        console.log('🔧 Using admin function for hardcoded admin');
+        // Use the admin function that bypasses RLS
+        const { data, error } = await supabase.rpc('admin_get_all_profiles');
+        if (!error && data) {
+          // Filter for clients only
+          clientsData = data.filter(profile => profile.role === 'client');
+        }
+        clientsError = error;
+      } else {
+        console.log('🔍 Using regular query for database admin');
+        // Regular query for actual database users
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('role', 'client')
+          .in('status', ['approved', 'active', 'pending'])
+          .order('created_at', { ascending: false });
+        clientsData = data;
+        clientsError = error;
+      }
 
       if (clientsError) {
         console.error('Error fetching clients:', clientsError);
@@ -77,11 +97,39 @@ export const TaskTemplateManager: React.FC = () => {
         });
         setClients([]);
       } else {
-        console.log('✅ Clients fetched successfully:', clientsData?.length || 0, clientsData);
+        console.log('✅ Clients fetched successfully:', clientsData?.length || 0);
+        console.log('Client data:', clientsData);
         setClients(clientsData || []);
       }
 
-      // Fetch existing onboarding assignments
+      // Fetch existing onboarding assignments using admin function if needed
+      let resourcesData;
+      let resourcesError;
+      
+      if (isHardcodedAdmin) {
+        // For hardcoded admin, try direct query first
+        const { data, error } = await supabase
+          .from('google_drive_resources')
+          .select(`
+            id,
+            google_url,
+            created_at,
+            onboarding_id,
+            client_onboarding!inner(
+              client_id,
+              profiles!inner(
+                full_name,
+                email,
+                company_name
+              )
+            )
+          `)
+          .eq('resource_type', 'sheet')
+          .eq('is_client_accessible', true)
+          .order('created_at', { ascending: false });
+        resourcesData = data;
+        resourcesError = error;
+      } else {
       const { data: resourcesData, error: resourcesError } = await supabase
         .from('google_drive_resources')
         .select(`
@@ -101,6 +149,7 @@ export const TaskTemplateManager: React.FC = () => {
         .eq('resource_type', 'sheet')
         .eq('is_client_accessible', true)
         .order('created_at', { ascending: false });
+      }
 
       if (resourcesError) {
         console.error('Error fetching assignments:', resourcesError);
