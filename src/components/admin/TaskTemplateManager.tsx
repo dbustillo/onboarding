@@ -13,7 +13,9 @@ import {
   Mail,
   Phone,
   Trash2,
-  Eye
+  Eye,
+  Clock,
+  Plus
 } from 'lucide-react';
 
 interface Client {
@@ -44,6 +46,7 @@ export const TaskTemplateManager: React.FC = () => {
   const [assignments, setAssignments] = useState<OnboardingAssignment[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [googleSheetUrl, setGoogleSheetUrl] = useState<string>('');
+  const [estimatedDays, setEstimatedDays] = useState<number>(45);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
@@ -56,7 +59,7 @@ export const TaskTemplateManager: React.FC = () => {
     try {
       setLoading(true);
       
-      // Fetch approved clients
+      // Fetch approved clients only
       const { data: clientsData, error: clientsError } = await supabase
         .from('profiles')
         .select('*')
@@ -64,7 +67,12 @@ export const TaskTemplateManager: React.FC = () => {
         .in('status', ['approved', 'active'])
         .order('created_at', { ascending: false });
 
-      if (clientsError) throw clientsError;
+      if (clientsError) {
+        console.error('Error fetching clients:', clientsError);
+        throw clientsError;
+      }
+      
+      console.log('Clients fetched:', clientsData?.length || 0);
       setClients(clientsData || []);
 
       // Fetch existing onboarding assignments with Google Drive resources
@@ -154,6 +162,7 @@ export const TaskTemplateManager: React.FC = () => {
             current_phase: 'pre_onboarding',
             status: 'in_progress',
             started_at: new Date().toISOString(),
+            estimated_completion: new Date(Date.now() + estimatedDays * 24 * 60 * 60 * 1000).toISOString(),
             data: {}
           })
           .select('id')
@@ -204,6 +213,7 @@ export const TaskTemplateManager: React.FC = () => {
       // Reset form
       setSelectedClientId('');
       setGoogleSheetUrl('');
+      setEstimatedDays(45);
       
       // Refresh assignments
       fetchData();
@@ -252,48 +262,49 @@ export const TaskTemplateManager: React.FC = () => {
   const selectedClient = clients.find(c => c.id === selectedClientId);
 
   return (
-    <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-2xl border border-blue-100">
-      <div className="p-6 border-b border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="p-3 bg-gradient-to-r from-blue-900 to-cyan-400 rounded-xl mr-4 shadow-lg">
-              <FileText className="text-white" size={24} />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-900 to-cyan-400 bg-clip-text text-transparent">
-                Client Onboarding Manager
-              </h2>
-              <p className="text-gray-600 text-sm">Assign Google Sheet onboarding documents to clients</p>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-2xl border border-blue-100">
+        <div className="p-6 border-b border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="p-3 bg-gradient-to-r from-blue-900 to-cyan-400 rounded-xl mr-4 shadow-lg">
+                <FileText className="text-white" size={24} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-900 to-cyan-400 bg-clip-text text-transparent">
+                  Client Onboarding Manager
+                </h2>
+                <p className="text-gray-600 text-sm">Assign Google Sheet onboarding documents to clients</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Message Banner */}
-      {message && (
-        <div className={`mx-6 my-4 p-4 rounded-lg flex items-center ${
-          message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-        }`}>
-          {message.type === 'success' ? (
-            <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-          ) : (
-            <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-          )}
-          <span className={message.type === 'success' ? 'text-green-700' : 'text-red-700'}>
-            {message.text}
-          </span>
-        </div>
-      )}
+        {/* Message Banner */}
+        {message && (
+          <div className={`mx-6 my-4 p-4 rounded-lg flex items-center ${
+            message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+          }`}>
+            {message.type === 'success' ? (
+              <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+            )}
+            <span className={message.type === 'success' ? 'text-green-700' : 'text-red-700'}>
+              {message.text}
+            </span>
+          </div>
+        )}
 
-      <div className="p-6">
         {/* Assignment Form */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-8">
+        <div className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
-            <Users className="w-5 h-5 mr-2 text-blue-600" />
+            <Plus className="w-5 h-5 mr-2 text-blue-600" />
             Assign Onboarding Document
           </h3>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Client Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -351,6 +362,24 @@ export const TaskTemplateManager: React.FC = () => {
                 Paste the shareable link to your Google Sheet with onboarding phases
               </p>
             </div>
+
+            {/* Estimated Duration */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Estimated Duration (Days)
+              </label>
+              <input
+                type="number"
+                value={estimatedDays}
+                onChange={(e) => setEstimatedDays(parseInt(e.target.value) || 45)}
+                min={1}
+                max={365}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Expected completion timeframe
+              </p>
+            </div>
           </div>
 
           {/* Instructions */}
@@ -389,98 +418,116 @@ export const TaskTemplateManager: React.FC = () => {
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Existing Assignments */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <FileText className="w-5 h-5 mr-2 text-blue-600" />
-              Active Onboarding Assignments ({assignments.length})
-            </h3>
+      {/* Onboarding Management - Active Assignments */}
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-200">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
+          <h3 className="text-xl font-bold text-gray-900 flex items-center">
+            <div className="p-2 bg-gradient-to-r from-blue-900 to-cyan-400 rounded-lg mr-3">
+              <FileText className="text-white" size={20} />
+            </div>
+            Onboarding Management
+            <span className="ml-3 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+              {assignments.length} Active
+            </span>
+          </h3>
+          <p className="text-gray-600 text-sm mt-1">Track and manage all active onboarding assignments</p>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center h-32">
+            <svg className="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
           </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <svg className="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
-          ) : assignments.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Assignments Yet</h3>
-              <p className="text-gray-600">
-                Start by assigning an onboarding document to a client above.
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {assignments.map(assignment => (
-                <div key={assignment.id} className="p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className="w-10 h-10 bg-gradient-to-r from-blue-900 to-cyan-400 rounded-full flex items-center justify-center">
-                          <Users className="text-white" size={16} />
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-medium text-gray-900">
-                            {assignment.client.full_name || assignment.client.email}
-                          </h4>
-                          <div className="flex items-center space-x-4 text-sm text-gray-600">
+        ) : assignments.length === 0 ? (
+          <div className="text-center py-12">
+            <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Active Assignments</h3>
+            <p className="text-gray-600">
+              Start by assigning an onboarding document to a client above.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {assignments.map(assignment => (
+              <div key={assignment.id} className="p-6 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-4 mb-3">
+                      <div className="w-12 h-12 bg-gradient-to-r from-blue-900 to-cyan-400 rounded-full flex items-center justify-center shadow-lg">
+                        <Users className="text-white" size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900">
+                          {assignment.client.full_name || assignment.client.email}
+                        </h4>
+                        <div className="flex items-center space-x-4 text-sm text-gray-600">
+                          <div className="flex items-center">
+                            <Mail className="w-3 h-3 mr-1" />
+                            {assignment.client.email}
+                          </div>
+                          {assignment.client.company_name && (
                             <div className="flex items-center">
-                              <Mail className="w-3 h-3 mr-1" />
-                              {assignment.client.email}
+                              <Building className="w-3 h-3 mr-1" />
+                              {assignment.client.company_name}
                             </div>
-                            {assignment.client.company_name && (
-                              <div className="flex items-center">
-                                <Building className="w-3 h-3 mr-1" />
-                                {assignment.client.company_name}
-                              </div>
-                            )}
-                            <div className="flex items-center">
-                              <Calendar className="w-3 h-3 mr-1" />
-                              {new Date(assignment.created_at).toLocaleDateString()}
-                            </div>
+                          )}
+                          <div className="flex items-center">
+                            <Calendar className="w-3 h-3 mr-1" />
+                            Assigned: {new Date(assignment.created_at).toLocaleDateString()}
                           </div>
                         </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center space-x-3">
-                      <a
-                        href={assignment.google_sheet_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        View Sheet
-                      </a>
-                      <a
-                        href={assignment.google_sheet_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                      >
-                        <ExternalLink className="w-4 h-4 mr-1" />
-                        Open
-                      </a>
-                      <button
-                        onClick={() => handleDeleteAssignment(assignment.id)}
-                        className="flex items-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-                      >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        Delete
-                      </button>
+                    
+                    {/* Status Indicators */}
+                    <div className="flex items-center space-x-3 ml-16">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Active
+                      </span>
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                        <Clock className="w-3 h-3 mr-1" />
+                        In Progress
+                      </span>
                     </div>
                   </div>
+
+                  <div className="flex items-center space-x-3">
+                    <a
+                      href={assignment.google_sheet_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium shadow-lg"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Sheet
+                    </a>
+                    <a
+                      href={assignment.google_sheet_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-lg"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Open
+                    </a>
+                    <button
+                      onClick={() => handleDeleteAssignment(assignment.id)}
+                      className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium shadow-lg"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </button>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

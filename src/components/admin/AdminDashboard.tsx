@@ -405,9 +405,7 @@ export const AdminDashboard: React.FC = () => {
         
         {activeView === 'tasks' && <TaskTemplateManager />}
         
-        {activeView === 'onboarding' && (
-          <ClientOnboardingSetup />
-        )}
+        {activeView === 'onboarding' && <TaskTemplateManager />}
       </div>
     </div>
   );
