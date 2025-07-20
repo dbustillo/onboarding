@@ -103,8 +103,6 @@ export const TaskTemplateManager: React.FC = () => {
       }
 
       // Fetch existing onboarding assignments using admin function if needed
-      let resourcesData;
-      let resourcesError;
       
       const { data: resourcesData, error: resourcesError } = await supabase
         .from('google_drive_resources')
