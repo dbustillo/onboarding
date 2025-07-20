@@ -60,6 +60,18 @@ interface Notification {
   action_url: string | null;
 }
 
+interface GoogleDriveResource {
+  id: string;
+  resource_type: string;
+  title: string;
+  description: string | null;
+  google_url: string;
+  is_client_accessible: boolean;
+  is_required: boolean;
+  access_level: string;
+  created_at: string;
+}
+
 const ClientDashboard: React.FC = () => {
   const { user, handleSignOutClick, signingOut } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -67,6 +79,7 @@ const ClientDashboard: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [googleResources, setGoogleResources] = useState<GoogleDriveResource[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [showNotification, setShowNotification] = useState(false);
@@ -165,6 +178,18 @@ const ClientDashboard: React.FC = () => {
           });
           setExpandedCategories(initialExpandedCategories);
         }
+        
+        // Fetch Google Drive resources for this onboarding
+        const { data: resourcesData, error: resourcesError } = await supabase
+          .from('google_drive_resources')
+          .select('*')
+          .eq('onboarding_id', onboardingData.id)
+          .eq('is_client_accessible', true)
+          .order('created_at', { ascending: false });
+
+        if (!resourcesError && resourcesData) {
+          setGoogleResources(resourcesData);
+        }
       }
 
       // Fetch documents
@@ -194,6 +219,42 @@ const ClientDashboard: React.FC = () => {
       console.error('Error fetching client data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateTaskStatus = async (taskId: string, newStatus: 'completed' | 'in_progress') => {
+    try {
+      const { error } = await supabase
+        .from('onboarding_tasks')
+        .update({ 
+          status: newStatus,
+          completed_at: newStatus === 'completed' ? new Date().toISOString() : null
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      // Update local state
+      setTasks(prev => 
+        prev.map(task => 
+          task.id === taskId 
+            ? { 
+                ...task, 
+                status: newStatus,
+                completed_at: newStatus === 'completed' ? new Date().toISOString() : null
+              }
+            : task
+        )
+      );
+      
+      setToastMessage(`Task marked as ${newStatus === 'completed' ? 'complete' : 'in progress'}`);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      setToastMessage('Failed to update task status');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
     }
   };
 
@@ -393,6 +454,7 @@ const ClientDashboard: React.FC = () => {
               { id: 'overview', label: 'Overview', icon: BarChart3 },
               { id: 'tasks', label: 'Tasks', icon: CheckCircle },
               { id: 'documents', label: 'Documents', icon: FileText },
+              { id: 'resources', label: 'Resources', icon: FileText },
               { id: 'notifications', label: 'Notifications', icon: Bell }
             ].map(tab => (
               <button
@@ -414,6 +476,42 @@ const ClientDashboard: React.FC = () => {
         {/* Tab Content */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Google Drive Resources */}
+            {googleResources.length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm p-6 lg:col-span-2">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <FileText className="w-5 h-5 mr-2 text-green-600" />
+                  Onboarding Resources
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {googleResources.map(resource => (
+                    <div key={resource.id} className="border border-green-200 rounded-lg p-4 bg-gradient-to-r from-green-50 to-blue-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-gray-900">{resource.title}</h4>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          resource.is_required ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {resource.is_required ? 'Required' : 'Optional'}
+                        </span>
+                      </div>
+                      {resource.description && (
+                        <p className="text-sm text-gray-600 mb-3">{resource.description}</p>
+                      )}
+                      <a
+                        href={resource.google_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        View Onboarding Doc
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             {/* Quick Stats */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
@@ -521,6 +619,35 @@ const ClientDashboard: React.FC = () => {
                                 )}
                               </div>
                             </div>
+                            
+                            {/* Task Actions */}
+                            {(task.task_owner === 'CLIENT' || task.task_owner === 'BOTH') && (
+                              <div className="ml-4 flex flex-col space-y-2">
+                                {task.status !== 'completed' ? (
+                                  <button
+                                    onClick={() => updateTaskStatus(task.id, 'completed')}
+                                    className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                                  >
+                                    <CheckCircle className="w-4 h-4 mr-1" />
+                                    Mark Complete
+                                  </button>
+                                ) : (
+                                  <div className="flex items-center text-green-600 text-sm">
+                                    <CheckCircle className="w-4 h-4 mr-1" />
+                                    Completed
+                                  </div>
+                                )}
+                                
+                                {task.status === 'completed' && (
+                                  <button
+                                    onClick={() => updateTaskStatus(task.id, 'in_progress')}
+                                    className="px-3 py-1 bg-gray-600 text-white text-xs rounded-lg hover:bg-gray-700 transition-colors"
+                                  >
+                                    Reopen
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                           
                           {/* Client Notes Section */}
@@ -621,6 +748,66 @@ const ClientDashboard: React.FC = () => {
                 ))}
                 {documents.length === 0 && (
                   <p className="text-gray-500 text-center py-8">No documents available yet.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'resources' && (
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Onboarding Resources</h3>
+              <div className="space-y-4">
+                {googleResources.map(resource => (
+                  <div key={resource.id} className="border border-green-200 rounded-lg p-6 bg-gradient-to-r from-green-50 to-blue-50">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <FileText className="w-6 h-6 text-green-600 mr-3" />
+                        <div>
+                          <h4 className="text-lg font-medium text-gray-900">{resource.title}</h4>
+                          <p className="text-sm text-gray-600">
+                            {resource.resource_type.charAt(0).toUpperCase() + resource.resource_type.slice(1)} • 
+                            Access: {resource.access_level}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`px-3 py-1 text-sm rounded-full ${
+                        resource.is_required ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {resource.is_required ? 'Required' : 'Optional'}
+                      </span>
+                    </div>
+                    
+                    {resource.description && (
+                      <p className="text-gray-700 mb-4">{resource.description}</p>
+                    )}
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-gray-500">
+                        Added: {new Date(resource.created_at).toLocaleDateString()}
+                      </div>
+                      <a
+                        href={resource.google_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors shadow-lg"
+                      >
+                        <FileText className="w-5 h-5 mr-2" />
+                        View Onboarding Doc
+                      </a>
+                    </div>
+                  </div>
+                ))}
+                
+                {googleResources.length === 0 && (
+                  <div className="text-center py-12">
+                    <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Resources Available</h3>
+                    <p className="text-gray-600">
+                      Your onboarding resources will appear here once they're added by your account manager.
+                    </p>
+                  </div>
                 )}
               </div>
             </div>

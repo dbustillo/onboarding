@@ -17,7 +17,9 @@ import {
   User,
   Building,
   Target,
-  ArrowRight
+  ArrowRight,
+  Sparkles,
+  Layers
 } from 'lucide-react';
 
 interface TaskTemplate {
@@ -718,16 +720,26 @@ export const TaskTemplateManager: React.FC = () => {
   });
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border">
-      <div className="p-6 border-b border-gray-200">
+    <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-2xl border border-blue-100">
+      <div className="p-6 border-b border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">Task Template Manager</h2>
+          <div className="flex items-center">
+            <div className="p-3 bg-gradient-to-r from-blue-900 to-cyan-400 rounded-xl mr-4 shadow-lg">
+              <Layers className="text-white" size={24} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-900 to-cyan-400 bg-clip-text text-transparent">
+                Task Template Manager
+              </h2>
+              <p className="text-gray-600 text-sm">Create and manage onboarding workflows</p>
+            </div>
+          </div>
           <div className="flex space-x-2">
             <button
               onClick={() => setShowNewTemplateForm(true)}
-              className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-900 to-cyan-400 text-white rounded-xl hover:from-blue-800 hover:to-cyan-300 transition-all duration-300 transform hover:scale-105 shadow-lg font-bold"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Sparkles className="w-4 h-4 mr-2" />
               New Template
             </button>
           </div>
@@ -752,8 +764,11 @@ export const TaskTemplateManager: React.FC = () => {
 
       {/* New Template Form */}
       {showNewTemplateForm && (
-        <div className="mx-6 my-4 p-6 bg-gray-50 rounded-lg border border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Create New Template</h3>
+        <div className="mx-6 my-4 p-6 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl border border-cyan-200 shadow-lg">
+          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <Sparkles className="w-5 h-5 mr-2 text-cyan-400" />
+            Create New Template
+          </h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -763,7 +778,7 @@ export const TaskTemplateManager: React.FC = () => {
                 type="text"
                 value={newTemplateName}
                 onChange={(e) => setNewTemplateName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all duration-300"
                 placeholder="Enter template name"
               />
             </div>
@@ -774,7 +789,7 @@ export const TaskTemplateManager: React.FC = () => {
               <textarea
                 value={newTemplateDescription}
                 onChange={(e) => setNewTemplateDescription(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all duration-300"
                 placeholder="Enter template description"
                 rows={3}
               />
@@ -782,14 +797,14 @@ export const TaskTemplateManager: React.FC = () => {
             <div className="flex justify-end space-x-2">
               <button
                 onClick={() => setShowNewTemplateForm(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateTemplate}
                 disabled={saving}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                className="px-4 py-2 bg-gradient-to-r from-blue-900 to-cyan-400 text-white rounded-lg hover:from-blue-800 hover:to-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-all duration-300 font-bold"
               >
                 {saving ? (
                   <>
@@ -801,7 +816,7 @@ export const TaskTemplateManager: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <Plus className="w-4 h-4 mr-2" />
+                    <Sparkles className="w-4 h-4 mr-2" />
                     Create Template
                   </>
                 )}
@@ -814,7 +829,10 @@ export const TaskTemplateManager: React.FC = () => {
       <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Templates List */}
         <div className="lg:col-span-1">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Templates</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <FileText className="w-5 h-5 mr-2 text-blue-600" />
+            Templates
+          </h3>
           {loading ? (
             <div className="flex items-center justify-center h-32">
               <svg className="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -823,37 +841,37 @@ export const TaskTemplateManager: React.FC = () => {
               </svg>
             </div>
           ) : templates.length === 0 ? (
-            <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="text-center py-8 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 shadow-lg">
               <FileText className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">No templates</h3>
               <p className="mt-1 text-sm text-gray-500">Get started by creating a new template.</p>
               <div className="mt-6">
                 <button
                   onClick={() => setShowNewTemplateForm(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                  className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-900 to-cyan-400 text-white rounded-lg hover:from-blue-800 hover:to-cyan-300 transition-all duration-300 font-bold shadow-lg"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
+                  <Sparkles className="w-4 h-4 mr-2" />
                   New Template
                 </button>
               </div>
             </div>
           ) : (
-            <div className="space-y-2 overflow-y-auto max-h-[600px] pr-2">
+            <div className="space-y-3 overflow-y-auto max-h-[600px] pr-2">
               {templates.map(template => (
                 <button
                   key={template.id}
                   onClick={() => handleSelectTemplate(template)}
-                  className={`w-full text-left p-4 rounded-lg border transition-colors ${
+                  className={`w-full text-left p-4 rounded-xl border transition-all duration-300 transform hover:scale-102 shadow-lg ${
                     selectedTemplate?.id === template.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:bg-gray-50'
+                      ? 'border-cyan-400 bg-gradient-to-r from-cyan-50 to-blue-50 shadow-xl'
+                      : 'border-gray-200 hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50 hover:shadow-xl'
                   }`}
                 >
                   <div className="flex justify-between items-center">
                     <h4 className="font-medium text-gray-900">{template.name}</h4>
                     <span className={`px-2 py-0.5 text-xs rounded-full ${
                       template.is_active 
-                        ? 'bg-green-100 text-green-800' 
+                        ? 'bg-green-100 text-green-800 border border-green-200' 
                         : 'bg-gray-100 text-gray-800'
                     }`}>
                       {template.is_active ? 'Active' : 'Inactive'}
@@ -877,9 +895,14 @@ export const TaskTemplateManager: React.FC = () => {
         {/* Template Details */}
         <div className="lg:col-span-3">
           {selectedTemplate ? (
-            <div>
+            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">{selectedTemplate.name}</h3>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">{selectedTemplate.name}</h3>
+                  {selectedTemplate.description && (
+                    <p className="text-gray-600 mt-1">{selectedTemplate.description}</p>
+                  )}
+                </div>
                 <div className="flex space-x-2">
                   {editMode ? (
                     <>
@@ -888,14 +911,14 @@ export const TaskTemplateManager: React.FC = () => {
                           setEditMode(false);
                           setEditedTasks(selectedTemplate.tasks || []);
                         }}
-                        className="px-3 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                        className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleSaveTemplate}
                         disabled={saving}
-                        className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                        className="px-3 py-2 bg-gradient-to-r from-blue-900 to-cyan-400 text-white rounded-lg hover:from-blue-800 hover:to-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-all duration-300 font-bold"
                       >
                         {saving ? (
                           <>
@@ -916,7 +939,7 @@ export const TaskTemplateManager: React.FC = () => {
                   ) : (
                     <button
                       onClick={() => setEditMode(true)}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+                      className="px-3 py-2 bg-gradient-to-r from-blue-900 to-cyan-400 text-white rounded-lg hover:from-blue-800 hover:to-cyan-300 flex items-center transition-all duration-300 font-bold"
                     >
                       <Edit className="w-4 h-4 mr-2" />
                       Edit Template
@@ -926,12 +949,12 @@ export const TaskTemplateManager: React.FC = () => {
               </div>
 
               {editMode && (
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200 shadow-lg">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="font-medium text-blue-800">Edit Tasks</h4>
                     <button
                       onClick={() => setShowNewTaskForm(true)}
-                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 flex items-center"
+                      className="px-3 py-1 bg-gradient-to-r from-blue-900 to-cyan-400 text-white text-sm rounded-lg hover:from-blue-800 hover:to-cyan-300 flex items-center transition-all duration-300 font-bold"
                     >
                       <Plus className="w-3 h-3 mr-1" />
                       Add Task
@@ -940,7 +963,7 @@ export const TaskTemplateManager: React.FC = () => {
                   
                   {/* New Task Form */}
                   {showNewTaskForm && (
-                    <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200">
+                    <div className="mb-4 p-4 bg-white rounded-xl border border-gray-200 shadow-lg">
                       <h5 className="font-medium text-gray-900 mb-3">
                         {editingTaskIndex !== null ? 'Edit Task' : 'Add New Task'}
                       </h5>
@@ -1051,16 +1074,16 @@ export const TaskTemplateManager: React.FC = () => {
               )}
 
               {/* Tasks List */}
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
                 {categories.map(category => {
                   const categoryTasks = groupedTasks[category] || [];
                   const isExpanded = expandedCategories[category] || false;
                   
                   return (
-                    <div key={category} className="border border-gray-200 rounded-lg overflow-hidden">
+                    <div key={category} className="border border-gray-200 rounded-xl overflow-hidden shadow-lg">
                       <button
                         onClick={() => toggleCategory(category)}
-                        className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+                        className="w-full px-4 py-3 flex items-center justify-between bg-gradient-to-r from-gray-50 to-blue-50 hover:from-gray-100 hover:to-blue-100 transition-all duration-300"
                       >
                         <div className="flex items-center">
                           {getCategoryIcon(category)}
@@ -1086,7 +1109,7 @@ export const TaskTemplateManager: React.FC = () => {
                             );
                             
                             return (
-                              <div key={index} className="p-4 hover:bg-gray-50 transition-colors">
+                              <div key={index} className="p-4 hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50 transition-all duration-300">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1">
                                     <h5 className="font-medium text-gray-900">{task.task_name}</h5>
@@ -1108,7 +1131,7 @@ export const TaskTemplateManager: React.FC = () => {
                                       <button
                                         onClick={() => handleMoveTask(taskIndex, 'up')}
                                         disabled={taskIndex === 0}
-                                        className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                                        className="p-1 text-gray-500 hover:text-blue-600 disabled:opacity-30 transition-colors"
                                       >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                           <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
@@ -1117,7 +1140,7 @@ export const TaskTemplateManager: React.FC = () => {
                                       <button
                                         onClick={() => handleMoveTask(taskIndex, 'down')}
                                         disabled={taskIndex === editedTasks.length - 1}
-                                        className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                                        className="p-1 text-gray-500 hover:text-blue-600 disabled:opacity-30 transition-colors"
                                       >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                           <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -1125,13 +1148,13 @@ export const TaskTemplateManager: React.FC = () => {
                                       </button>
                                       <button
                                         onClick={() => handleEditTask(taskIndex)}
-                                        className="p-1 text-blue-600 hover:text-blue-800"
+                                        className="p-1 text-blue-600 hover:text-cyan-400 transition-colors"
                                       >
                                         <Edit className="w-4 h-4" />
                                       </button>
                                       <button
                                         onClick={() => handleDeleteTask(taskIndex)}
-                                        className="p-1 text-red-600 hover:text-red-800"
+                                        className="p-1 text-red-600 hover:text-red-800 transition-colors"
                                       >
                                         <Trash2 className="w-4 h-4" />
                                       </button>
@@ -1149,7 +1172,7 @@ export const TaskTemplateManager: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="text-center py-12 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 shadow-lg">
               <FileText className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">No template selected</h3>
               <p className="mt-1 text-sm text-gray-500">Select a template from the list or create a new one.</p>
