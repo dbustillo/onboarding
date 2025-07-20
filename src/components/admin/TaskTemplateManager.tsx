@@ -106,64 +106,89 @@ export const TaskTemplateManager: React.FC = () => {
       let resourcesData;
       let resourcesError;
       
-      if (isHardcodedAdmin) {
-        // For hardcoded admin, try direct query first
-        const { data, error } = await supabase
-          .from('google_drive_resources')
-          .select(`
-            id,
-            google_url,
-            created_at,
-            onboarding_id,
-            client_onboarding!inner(
-              client_id,
-              profiles!inner(
-                full_name,
-                email,
-                company_name
-              )
-            )
-          `)
-          .eq('resource_type', 'sheet')
-          .eq('is_client_accessible', true)
-          .order('created_at', { ascending: false });
-        resourcesData = data;
-        resourcesError = error;
-      } else {
+      // Try to fetch assignments using a simpler approach
+      console.log('🔍 Fetching onboarding assignments...');
+      
       const { data: resourcesData, error: resourcesError } = await supabase
         .from('google_drive_resources')
         .select(`
           id,
+          title,
           google_url,
           created_at,
-          onboarding_id,
-          client_onboarding!inner(
-            client_id,
-            profiles!inner(
-              full_name,
-              email,
-              company_name
-            )
-          )
+          onboarding_id
         `)
         .eq('resource_type', 'sheet')
         .eq('is_client_accessible', true)
         .order('created_at', { ascending: false });
-      }
 
       if (resourcesError) {
-        console.error('Error fetching assignments:', resourcesError);
+        console.error('❌ Error fetching assignments:', resourcesError);
+        setMessage({
+          type: 'error',
+          text: `Error fetching assignments: ${resourcesError.message}`
+        });
       } else {
         console.log('✅ Assignments fetched:', resourcesData?.length || 0);
+        console.log('Assignment data:', resourcesData);
+        
         if (resourcesData) {
-          const formattedAssignments = resourcesData.map(resource => ({
-            id: resource.id,
-            client_id: resource.client_onboarding.client_id,
-            google_sheet_url: resource.google_url,
-            created_at: resource.created_at,
-            client: resource.client_onboarding.profiles
-          }));
-          setAssignments(formattedAssignments);
+          // For each resource, fetch the client details separately
+          const assignmentsWithClients = [];
+          
+          for (const resource of resourcesData) {
+            try {
+              // Get the onboarding record to find the client_id
+              const { data: onboardingData, error: onboardingError } = await supabase
+                .from('client_onboarding')
+                .select('client_id')
+                .eq('id', resource.onboarding_id)
+                .single();
+                
+              if (!onboardingError && onboardingData) {
+                // Get the client profile
+                let clientData;
+                let clientError;
+                
+                if (isHardcodedAdmin) {
+                  // Use admin function for hardcoded admin
+                  const { data: allProfiles, error } = await supabase.rpc('admin_get_all_profiles');
+                  if (!error && allProfiles) {
+                    clientData = allProfiles.find(p => p.id === onboardingData.client_id);
+                  }
+                  clientError = error;
+                } else {
+                  // Direct query for database admin
+                  const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', onboardingData.client_id)
+                    .single();
+                  clientData = data;
+                  clientError = error;
+                }
+                
+                if (!clientError && clientData) {
+                  assignmentsWithClients.push({
+                    id: resource.id,
+                    client_id: onboardingData.client_id,
+                    google_sheet_url: resource.google_url,
+                    created_at: resource.created_at,
+                    client: {
+                      full_name: clientData.full_name,
+                      email: clientData.email,
+                      company_name: clientData.company_name
+                    }
+                  });
+                }
+              }
+            } catch (err) {
+              console.error('Error processing assignment:', err);
+            }
+          }
+          
+          console.log('✅ Processed assignments:', assignmentsWithClients.length);
+          setAssignments(assignmentsWithClients);
         }
       }
 
@@ -227,7 +252,7 @@ export const TaskTemplateManager: React.FC = () => {
       setEstimatedDays(45);
       
       // Refresh assignments
-      fetchData();
+      await fetchData();
 
     } catch (error) {
       console.error('Error assigning onboarding:', error);
