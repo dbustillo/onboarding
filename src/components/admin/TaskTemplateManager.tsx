@@ -105,33 +105,34 @@ export const TaskTemplateManager: React.FC = () => {
       // Fetch existing onboarding assignments using admin function if needed
       console.log('🔍 Fetching onboarding assignments...');
       
-      // First, get all Google Drive resources that are onboarding sheets
-      const { data: resourcesData, error: resourcesError } = await supabase
+      // Try a simpler approach - get all Google Drive resources first
+      console.log('📋 Querying google_drive_resources table...');
+      const { data: allResources, error: resourcesError } = await supabase
         .from('google_drive_resources')
-        .select(`
-          id,
-          onboarding_id,
-          title,
-          google_url,
-          created_at
-        `)
-        .eq('resource_type', 'sheet')
-        .eq('is_client_accessible', true)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (resourcesError) {
-        console.error('❌ Error fetching assignments:', resourcesError);
-        // Don't show error to user, just log it
-        console.error('Failed to fetch Google Drive resources:', resourcesError);
+        console.error('❌ Error fetching Google Drive resources:', resourcesError);
         setAssignments([]);
       } else {
-        console.log('✅ Assignments fetched:', resourcesData?.length || 0);
+        console.log('✅ All Google Drive resources fetched:', allResources?.length || 0);
+        console.log('📋 Resources data:', allResources);
         
-        if (resourcesData) {
-          console.log('📋 Processing', resourcesData.length, 'resources...');
+        // Filter for sheet resources that are client accessible
+        const sheetResources = allResources?.filter(resource => 
+          resource.resource_type === 'sheet' && 
+          resource.is_client_accessible === true
+        ) || [];
+        
+        console.log('📊 Filtered sheet resources:', sheetResources.length);
+        console.log('📋 Sheet resources:', sheetResources);
+        
+        if (sheetResources.length > 0) {
+          console.log('📋 Processing', sheetResources.length, 'sheet resources...');
           const assignmentsWithClients: OnboardingAssignment[] = [];
           
-          for (const resource of resourcesData) {
+          for (const resource of sheetResources) {
             console.log('🔄 Processing resource:', resource.id, 'for onboarding:', resource.onboarding_id);
             
             try {
@@ -141,6 +142,7 @@ export const TaskTemplateManager: React.FC = () => {
               }
               
               // Get the client_id from the onboarding record
+              console.log('🔍 Fetching onboarding record for ID:', resource.onboarding_id);
               const { data: onboardingData, error: onboardingError } = await supabase
                 .from('client_onboarding')
                 .select('client_id')
@@ -179,7 +181,7 @@ export const TaskTemplateManager: React.FC = () => {
                   .from('profiles')
                   .select('*')
                   .eq('id', onboardingData.client_id)
-                  .single();
+                  .maybeSingle();
                 clientData = data;
                 clientError = error;
               }
@@ -216,9 +218,10 @@ export const TaskTemplateManager: React.FC = () => {
           }
           
           console.log('✅ Processed assignments:', assignmentsWithClients.length);
+          console.log('📋 Final assignments data:', assignmentsWithClients);
           setAssignments(assignmentsWithClients);
         } else {
-          console.log('📭 No resources data returned');
+          console.log('📭 No sheet resources found');
           setAssignments([]);
         }
       }
