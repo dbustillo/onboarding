@@ -2,722 +2,254 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
-  Plus, 
-  Save, 
-  Trash2, 
-  ChevronDown, 
-  ChevronUp, 
-  Edit, 
-  Copy, 
+  Users, 
+  FileText, 
+  ExternalLink, 
   CheckCircle, 
   AlertCircle,
-  Clock,
+  Send,
   Calendar,
-  FileText,
-  User,
   Building,
-  Target,
-  ArrowRight,
-  Sparkles,
-  Layers
+  Mail,
+  Phone,
+  Trash2,
+  Eye
 } from 'lucide-react';
 
-interface TaskTemplate {
+interface Client {
   id: string;
-  name: string;
-  description: string | null;
-  tasks: TaskDefinition[];
-  estimated_duration_days: number;
-  is_active: boolean;
-  created_by: string | null;
+  email: string;
+  full_name: string | null;
+  company_name: string | null;
+  phone: string | null;
+  status: string;
   created_at: string;
 }
 
-interface TaskDefinition {
-  category: string;
-  task_name: string;
-  task_description?: string;
-  task_owner: 'INSPIRE' | 'CLIENT' | 'BOTH';
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  sort_order: number;
-  metadata?: any;
+interface OnboardingAssignment {
+  id: string;
+  client_id: string;
+  google_sheet_url: string;
+  created_at: string;
+  client: {
+    full_name: string | null;
+    email: string;
+    company_name: string | null;
+  };
 }
 
 export const TaskTemplateManager: React.FC = () => {
   const { profile: currentUserProfile } = useAuth();
-  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<TaskTemplate | null>(null);
-  const [editMode, setEditMode] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [clients, setClients] = useState<Client[]>([]);
+  const [assignments, setAssignments] = useState<OnboardingAssignment[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [googleSheetUrl, setGoogleSheetUrl] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
-  const [newTemplateName, setNewTemplateName] = useState('');
-  const [newTemplateDescription, setNewTemplateDescription] = useState('');
-  const [showNewTemplateForm, setShowNewTemplateForm] = useState(false);
-  const [editedTasks, setEditedTasks] = useState<TaskDefinition[]>([]);
-  const [newTask, setNewTask] = useState<TaskDefinition>({
-    category: '',
-    task_name: '',
-    task_description: '',
-    task_owner: 'INSPIRE',
-    priority: 'medium',
-    sort_order: 0
-  });
-  const [showNewTaskForm, setShowNewTaskForm] = useState(false);
-  const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null);
-
-  // Default task categories
-  const defaultCategories = [
-    'Pre-Onboarding',
-    'Tech & Marketplace Integration',
-    'Inventory & Inbounding',
-    'Pilot Run & User Acceptance (UAT)',
-    'GO LIVE'
-  ];
 
   useEffect(() => {
-    fetchTemplates();
+    fetchData();
   }, []);
 
-  const fetchTemplates = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      console.log('Fetching templates...');
-      const { data, error } = await supabase
-        .from('onboarding_templates')
+      
+      // Fetch approved clients
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('profiles')
         .select('*')
+        .eq('role', 'client')
+        .in('status', ['approved', 'active'])
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching templates:', error);
-        throw error;
+      if (clientsError) throw clientsError;
+      setClients(clientsData || []);
+
+      // Fetch existing onboarding assignments with Google Drive resources
+      const { data: resourcesData, error: resourcesError } = await supabase
+        .from('google_drive_resources')
+        .select(`
+          id,
+          google_url,
+          created_at,
+          onboarding_id,
+          client_onboarding!inner(
+            client_id,
+            profiles!inner(
+              full_name,
+              email,
+              company_name
+            )
+          )
+        `)
+        .eq('resource_type', 'sheet')
+        .eq('is_client_accessible', true)
+        .order('created_at', { ascending: false });
+
+      if (!resourcesError && resourcesData) {
+        const formattedAssignments = resourcesData.map(resource => ({
+          id: resource.id,
+          client_id: resource.client_onboarding.client_id,
+          google_sheet_url: resource.google_url,
+          created_at: resource.created_at,
+          client: resource.client_onboarding.profiles
+        }));
+        setAssignments(formattedAssignments);
       }
-      
-      console.log('Templates fetched:', data?.length || 0, data);
-      setTemplates(data || []);
-      
-      // If there are templates, select the first one
-      if (data && data.length > 0) {
-        setSelectedTemplate(data[0]);
-        setEditedTasks(data[0].tasks || []);
-        
-        // Initialize expanded categories
-        const categories = getUniqueCategories(data[0].tasks || []);
-        const initialExpandedState: Record<string, boolean> = {};
-        categories.forEach(category => {
-          initialExpandedState[category] = true;
-          console.log('Setting category expanded:', category);
-        });
-        setExpandedCategories(initialExpandedState);
-      }
+
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      console.error('Error fetching data:', error);
       setMessage({
         type: 'error',
-        text: 'Failed to load task templates'
+        text: 'Failed to load data'
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const getUniqueCategories = (tasks: TaskDefinition[]) => {
-    const categories = [...new Set(tasks.map(task => task.category))];
-    console.log('Unique categories:', categories);
-    return categories;
-  };
-
-  const handleSelectTemplate = (template: TaskTemplate) => {
-    setSelectedTemplate(template);
-    setEditedTasks(template.tasks || []);
-    setEditMode(false);
-    
-    // Initialize expanded categories
-    const categories = getUniqueCategories(template.tasks || []);
-    const initialExpandedState: Record<string, boolean> = {};
-    categories.forEach(category => {
-      initialExpandedState[category] = true;
-    });
-    setExpandedCategories(initialExpandedState);
-  };
-
-  const handleCreateTemplate = async () => {
-    if (!newTemplateName.trim()) {
+  const handleAssignOnboarding = async () => {
+    if (!selectedClientId || !googleSheetUrl.trim()) {
       setMessage({
         type: 'error',
-        text: 'Template name is required'
+        text: 'Please select a client and enter a Google Sheet URL'
+      });
+      return;
+    }
+
+    // Validate URL format
+    if (!googleSheetUrl.includes('docs.google.com/spreadsheets')) {
+      setMessage({
+        type: 'error',
+        text: 'Please enter a valid Google Sheets URL'
       });
       return;
     }
 
     try {
       setSaving(true);
-      
-      // Create default tasks based on the spreadsheet
-      const defaultTasks = createDefaultTasks();
-      
-      const { data, error } = await supabase
-        .from('onboarding_templates')
+
+      // Check if client already has an onboarding
+      const { data: existingOnboarding, error: checkError } = await supabase
+        .from('client_onboarding')
+        .select('id')
+        .eq('client_id', selectedClientId)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      let onboardingId;
+
+      if (existingOnboarding) {
+        // Use existing onboarding
+        onboardingId = existingOnboarding.id;
+      } else {
+        // Create new onboarding
+        const { data: newOnboarding, error: onboardingError } = await supabase
+          .from('client_onboarding')
+          .insert({
+            client_id: selectedClientId,
+            current_phase: 'pre_onboarding',
+            status: 'in_progress',
+            started_at: new Date().toISOString(),
+            data: {}
+          })
+          .select('id')
+          .single();
+
+        if (onboardingError) throw onboardingError;
+        onboardingId = newOnboarding.id;
+      }
+
+      // Create Google Drive resource
+      const { data: resourceData, error: resourceError } = await supabase
+        .from('google_drive_resources')
         .insert({
-          name: newTemplateName,
-          description: newTemplateDescription,
-          tasks: defaultTasks,
-          estimated_duration_days: 45,
-          is_active: true,
+          onboarding_id: onboardingId,
+          resource_type: 'sheet',
+          title: 'Onboarding Document',
+          description: 'Interactive onboarding checklist and phase breakdown',
+          google_url: googleSheetUrl,
+          is_client_accessible: true,
+          is_required: true,
+          access_level: 'edit',
           created_by: currentUserProfile?.id
         })
         .select()
         .single();
 
-      if (error) throw error;
-      
-      setTemplates(prev => [data, ...prev]);
-      setSelectedTemplate(data);
-      setEditedTasks(data.tasks || []);
-      setShowNewTemplateForm(false);
-      setNewTemplateName('');
-      setNewTemplateDescription('');
-      
+      if (resourceError) throw resourceError;
+
+      // Create notification for client
+      const selectedClient = clients.find(c => c.id === selectedClientId);
+      if (selectedClient) {
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: selectedClientId,
+            title: 'Onboarding Document Available',
+            message: 'Your onboarding document has been assigned. Click to view and complete your onboarding phases.',
+            type: 'info',
+            action_url: '/resources'
+          });
+      }
+
       setMessage({
         type: 'success',
-        text: 'Template created successfully'
+        text: `Onboarding document successfully assigned to ${selectedClient?.full_name || selectedClient?.email}`
       });
+
+      // Reset form
+      setSelectedClientId('');
+      setGoogleSheetUrl('');
       
-      // Initialize expanded categories
-      const categories = getUniqueCategories(data.tasks || []);
-      const initialExpandedState: Record<string, boolean> = {};
-      categories.forEach(category => {
-        initialExpandedState[category] = true;
-      });
-      setExpandedCategories(initialExpandedState);
-      
+      // Refresh assignments
+      fetchData();
+
     } catch (error) {
-      console.error('Error creating template:', error);
+      console.error('Error assigning onboarding:', error);
       setMessage({
         type: 'error',
-        text: 'Failed to create template'
+        text: 'Failed to assign onboarding document'
       });
     } finally {
       setSaving(false);
     }
   };
 
-  const createDefaultTasks = (): TaskDefinition[] => {
-    // This function creates the default tasks based on the spreadsheet
-    return [
-      // Pre-Onboarding Phase
-      {
-        category: 'Pre-Onboarding', 
-        task_name: 'Client Requirement Specifications finalized',
-        task_description: 'Define and document all client requirements and specifications (warehousing & storage, sales channels, fulfillment, etc.)',
-        task_owner: 'CLIENT',
-        priority: 'high',
-        sort_order: 1
-      },
-      {
-        category: 'Pre-Onboarding',
-        task_name: 'SLA & Pricing Sign-off',
-        task_description: 'Client to review and sign off on Service Level Agreement and pricing',
-        task_owner: 'CLIENT',
-        priority: 'critical',
-        sort_order: 2
-      },
-      {
-        category: 'Pre-Onboarding',
-        task_name: 'Primary and secondary contacts (Sales, Tech, Ops)',
-        task_description: 'Identify primary and secondary contacts for different departments',
-        task_owner: 'CLIENT',
-        priority: 'high',
-        sort_order: 3
-      },
-      {
-        category: 'Pre-Onboarding',
-        task_name: 'Internal point persons (CS, WMS, Fulfillment, Onboarding Lead)',
-        task_description: 'Assign internal team members to handle different aspects of onboarding',
-        task_owner: 'INSPIRE',
-        priority: 'high',
-        sort_order: 4
-      },
-      {
-        category: 'Pre-Onboarding',
-        task_name: 'Contact channels or chat groups created (Viber or Whatsapp)',
-        task_description: 'Set up communication channels for ongoing collaboration',
-        task_owner: 'BOTH',
-        priority: 'medium',
-        sort_order: 5
-      },
-      {
-        category: 'Pre-Onboarding',
-        task_name: 'Client logo (for branding needs)',
-        task_description: 'Client to provide logo files for branding purposes',
-        task_owner: 'CLIENT',
-        priority: 'medium',
-        sort_order: 6
-      },
-      {
-        category: 'Pre-Onboarding',
-        task_name: 'Escalation protocol (key persons for issues or concerns)',
-        task_description: 'Define escalation procedures and responsible persons',
-        task_owner: 'BOTH',
-        priority: 'high',
-        sort_order: 7
-      },
-      {
-        category: 'Pre-Onboarding',
-        task_name: 'Flow protocol of expected file formats for data exchange (switching to Inspire team to avoid issues during marketplace integration)',
-        task_description: 'Define file formats and data exchange protocols',
-        task_owner: 'INSPIRE',
-        priority: 'medium',
-        sort_order: 8
-      },
-      {
-        category: 'Pre-Onboarding',
-        task_name: 'Product Classification: Fast-moving / Average / Slow-moving',
-        task_description: 'Categorize products based on movement speed for optimal warehouse placement',
-        task_owner: 'CLIENT',
-        priority: 'medium',
-        sort_order: 9
-      },
-      {
-        category: 'Pre-Onboarding',
-        task_name: 'Packaging specs provided (sample video, if available)',
-        task_description: 'Client to provide packaging specifications and examples',
-        task_owner: 'CLIENT',
-        priority: 'medium',
-        sort_order: 10
-      },
-      {
-        category: 'Pre-Onboarding',
-        task_name: 'Marketplace user access shared with Inspire Team for system integration',
-        task_description: 'Client to provide necessary marketplace access credentials',
-        task_owner: 'CLIENT',
-        priority: 'high',
-        sort_order: 11
-      },
-      {
-        category: 'Pre-Onboarding',
-        task_name: 'Sandbox system access (to be provided by Inspire)',
-        task_description: 'Provide client with sandbox environment access for testing',
-        task_owner: 'INSPIRE',
-        priority: 'medium',
-        sort_order: 12
-      },
-      {
-        category: 'Pre-Onboarding',
-        task_name: 'Client Data Room access (Google Drive document storage) (to be provided by Inspire)',
-        task_description: 'Set up and share access to client data storage',
-        task_owner: 'INSPIRE',
-        priority: 'medium',
-        sort_order: 13
-      },
-      
-      // Tech & Marketplace Integration Phase
-      {
-        category: 'Tech & Marketplace Integration',
-        task_name: 'Lazada, Shopee, TikTok Shop, Shopify, etc. connected',
-        task_description: 'Connect all relevant marketplace platforms',
-        task_owner: 'BOTH',
-        priority: 'high',
-        sort_order: 14
-      },
-      {
-        category: 'Tech & Marketplace Integration',
-        task_name: 'API keys or plugin access created (Shopify only)',
-        task_description: 'Generate and configure API access for Shopify integration',
-        task_owner: 'CLIENT',
-        priority: 'high',
-        sort_order: 15
-      },
-      {
-        category: 'Tech & Marketplace Integration',
-        task_name: 'Channel-specific mapping validated',
-        task_description: 'Verify product and category mappings for each sales channel',
-        task_owner: 'BOTH',
-        priority: 'high',
-        sort_order: 16
-      },
-      {
-        category: 'Tech & Marketplace Integration',
-        task_name: 'Marketplace integration testing',
-        task_description: 'Test all marketplace integrations to ensure proper functionality',
-        task_owner: 'INSPIRE',
-        priority: 'critical',
-        sort_order: 17
-      },
-      {
-        category: 'Tech & Marketplace Integration',
-        task_name: 'Live order testing with warehouse team',
-        task_description: 'Process test orders through the entire fulfillment workflow',
-        task_owner: 'BOTH',
-        priority: 'critical',
-        sort_order: 18
-      },
-      
-      // Inventory & Inbounding Phase
-      {
-        category: 'Inventory & Inbounding',
-        task_name: 'Product transfer scheduled (ASN created by the Client)',
-        task_description: 'Client to create Advanced Shipping Notice for inventory transfer',
-        task_owner: 'CLIENT',
-        priority: 'high',
-        sort_order: 19
-      },
-      {
-        category: 'Inventory & Inbounding',
-        task_name: 'Warehouse receiving orders created in WMS (ASN received by Inspire Team)',
-        task_description: 'Create receiving orders in WMS based on client ASN',
-        task_owner: 'INSPIRE',
-        priority: 'high',
-        sort_order: 20
-      },
-      {
-        category: 'Inventory & Inbounding',
-        task_name: 'Product Inspection & Verification (QA by Inspire Team)',
-        task_description: 'Perform quality inspection of received inventory',
-        task_owner: 'INSPIRE',
-        priority: 'high',
-        sort_order: 21
-      },
-      {
-        category: 'Inventory & Inbounding',
-        task_name: 'Physical receiving completed (by Inspire Team)',
-        task_description: 'Complete physical receiving process in warehouse',
-        task_owner: 'INSPIRE',
-        priority: 'high',
-        sort_order: 22
-      },
-      {
-        category: 'Inventory & Inbounding',
-        task_name: 'QA completed (quantity, damage, labeling)',
-        task_description: 'Complete quality assurance checks on all received inventory',
-        task_owner: 'INSPIRE',
-        priority: 'high',
-        sort_order: 23
-      },
-      {
-        category: 'Inventory & Inbounding',
-        task_name: 'Products mapped to correct put-away zones',
-        task_description: 'Assign products to appropriate warehouse locations',
-        task_owner: 'INSPIRE',
-        priority: 'medium',
-        sort_order: 24
-      },
-      {
-        category: 'Inventory & Inbounding',
-        task_name: 'Stock put-away logged in system',
-        task_description: 'Record all put-away activities in the WMS',
-        task_owner: 'INSPIRE',
-        priority: 'medium',
-        sort_order: 25
-      },
-      {
-        category: 'Inventory & Inbounding',
-        task_name: 'Initial picking and packing process defined',
-        task_description: 'Define standard operating procedures for picking and packing',
-        task_owner: 'INSPIRE',
-        priority: 'high',
-        sort_order: 26
-      },
-      {
-        category: 'Inventory & Inbounding',
-        task_name: 'Packaging materials prepared (SKUs needing boxes, fillers, etc.)',
-        task_description: 'Prepare all necessary packaging materials for client products',
-        task_owner: 'INSPIRE',
-        priority: 'medium',
-        sort_order: 27
-      },
-      {
-        category: 'Inventory & Inbounding',
-        task_name: 'Returns intake process agreed (restocking vs disposal)',
-        task_description: 'Define and document returns handling procedures',
-        task_owner: 'BOTH',
-        priority: 'medium',
-        sort_order: 28
-      },
-      
-      // Pilot Run & User Acceptance (UAT) Phase
-      {
-        category: 'Pilot Run & User Acceptance (UAT)',
-        task_name: 'Simulate small batch orders from each marketplace',
-        task_description: 'Process test orders from each integrated marketplace',
-        task_owner: 'BOTH',
-        priority: 'critical',
-        sort_order: 29
-      },
-      {
-        category: 'Pilot Run & User Acceptance (UAT)',
-        task_name: 'Cross-functional observation (CS, WH, Tech, Client)',
-        task_description: 'Conduct observation sessions with all stakeholders',
-        task_owner: 'BOTH',
-        priority: 'high',
-        sort_order: 30
-      },
-      {
-        category: 'Pilot Run & User Acceptance (UAT)',
-        task_name: 'Notes on gaps or improvement opportunities',
-        task_description: 'Document any issues or potential improvements identified during pilot',
-        task_owner: 'BOTH',
-        priority: 'medium',
-        sort_order: 31
-      },
-      {
-        category: 'Pilot Run & User Acceptance (UAT)',
-        task_name: 'Sign-off from client team post-pilot',
-        task_description: 'Obtain formal client approval after successful pilot run',
-        task_owner: 'CLIENT',
-        priority: 'critical',
-        sort_order: 32
-      },
-      {
-        category: 'Pilot Run & User Acceptance (UAT)',
-        task_name: 'Internal validation: Ops, WH, Tech',
-        task_description: 'Conduct internal validation across all departments',
-        task_owner: 'INSPIRE',
-        priority: 'high',
-        sort_order: 33
-      },
-      {
-        category: 'Pilot Run & User Acceptance (UAT)',
-        task_name: 'Final tweaks to workflow or system settings',
-        task_description: 'Make final adjustments based on pilot feedback',
-        task_owner: 'INSPIRE',
-        priority: 'high',
-        sort_order: 34
-      },
-      
-      // GO LIVE Phase
-      {
-        category: 'GO LIVE',
-        task_name: 'First batch of live orders processed and dispatched',
-        task_description: 'Process initial set of real customer orders',
-        task_owner: 'INSPIRE',
-        priority: 'critical',
-        sort_order: 35
-      },
-      {
-        category: 'GO LIVE',
-        task_name: 'Day 1 to Day 3 support window prepared',
-        task_description: 'Establish intensive support coverage for initial days',
-        task_owner: 'INSPIRE',
-        priority: 'high',
-        sort_order: 36
-      },
-      {
-        category: 'GO LIVE',
-        task_name: '7-day operational check-in',
-        task_description: 'Conduct review meeting after first week of operations',
-        task_owner: 'BOTH',
-        priority: 'medium',
-        sort_order: 37
-      },
-      {
-        category: 'GO LIVE',
-        task_name: '30-day performance review',
-        task_description: 'Comprehensive review after first month of operations',
-        task_owner: 'BOTH',
-        priority: 'medium',
-        sort_order: 38
-      },
-      {
-        category: 'GO LIVE',
-        task_name: 'Initial optimization plan discussed (cutoffs, TATs, workflows)',
-        task_description: 'Develop plan for ongoing optimization of operations',
-        task_owner: 'BOTH',
-        priority: 'medium',
-        sort_order: 39
-      }
-    ];
-  };
+  const handleDeleteAssignment = async (assignmentId: string) => {
+    if (!confirm('Are you sure you want to delete this onboarding assignment?')) {
+      return;
+    }
 
-  const handleSaveTemplate = async () => {
-    if (!selectedTemplate) return;
-    
     try {
-      setSaving(true);
-      
       const { error } = await supabase
-        .from('onboarding_templates')
-        .update({
-          tasks: editedTasks,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedTemplate.id);
+        .from('google_drive_resources')
+        .delete()
+        .eq('id', assignmentId);
 
       if (error) throw error;
-      
-      // Update local state
-      setTemplates(prev => 
-        prev.map(t => 
-          t.id === selectedTemplate.id 
-            ? { ...t, tasks: editedTasks, updated_at: new Date().toISOString() } 
-            : t
-        )
-      );
-      
-      setSelectedTemplate(prev => 
-        prev ? { ...prev, tasks: editedTasks, updated_at: new Date().toISOString() } : null
-      );
-      
-      setEditMode(false);
+
       setMessage({
         type: 'success',
-        text: 'Template saved successfully'
+        text: 'Onboarding assignment deleted successfully'
       });
-      
+
+      // Refresh assignments
+      fetchData();
+
     } catch (error) {
-      console.error('Error saving template:', error);
+      console.error('Error deleting assignment:', error);
       setMessage({
         type: 'error',
-        text: 'Failed to save template'
+        text: 'Failed to delete assignment'
       });
-    } finally {
-      setSaving(false);
     }
   };
 
-  const handleAddTask = () => {
-    if (!newTask.category || !newTask.task_name) {
-      setMessage({
-        type: 'error',
-        text: 'Category and task name are required'
-      });
-      return;
-    }
-    
-    // If editing an existing task
-    if (editingTaskIndex !== null) {
-      const updatedTasks = [...editedTasks];
-      updatedTasks[editingTaskIndex] = {
-        ...newTask,
-        sort_order: editingTaskIndex
-      };
-      setEditedTasks(updatedTasks);
-      setEditingTaskIndex(null);
-    } else {
-      // Adding a new task
-      setEditedTasks(prev => [
-        ...prev, 
-        {
-          ...newTask,
-          sort_order: prev.length
-        }
-      ]);
-    }
-    
-    // Reset form
-    setNewTask({
-      category: '',
-      task_name: '',
-      task_description: '',
-      task_owner: 'INSPIRE',
-      priority: 'medium',
-      sort_order: 0
-    });
-    setShowNewTaskForm(false);
-  };
-
-  const handleEditTask = (index: number) => {
-    const task = editedTasks[index];
-    setNewTask({
-      category: task.category,
-      task_name: task.task_name,
-      task_description: task.task_description || '',
-      task_owner: task.task_owner,
-      priority: task.priority,
-      sort_order: task.sort_order
-    });
-    setEditingTaskIndex(index);
-    setShowNewTaskForm(true);
-  };
-
-  const handleDeleteTask = (index: number) => {
-    const updatedTasks = editedTasks.filter((_, i) => i !== index);
-    // Update sort_order for remaining tasks
-    const reorderedTasks = updatedTasks.map((task, i) => ({
-      ...task,
-      sort_order: i
-    }));
-    setEditedTasks(reorderedTasks);
-  };
-
-  const handleMoveTask = (index: number, direction: 'up' | 'down') => {
-    if (
-      (direction === 'up' && index === 0) || 
-      (direction === 'down' && index === editedTasks.length - 1)
-    ) {
-      return;
-    }
-    
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    const updatedTasks = [...editedTasks];
-    
-    // Swap tasks
-    [updatedTasks[index], updatedTasks[newIndex]] = [updatedTasks[newIndex], updatedTasks[index]];
-    
-    // Update sort_order
-    updatedTasks.forEach((task, i) => {
-      task.sort_order = i;
-    });
-    
-    setEditedTasks(updatedTasks);
-  };
-
-  const toggleCategory = (category: string) => {
-    setExpandedCategories(prev => ({
-      ...prev,
-      [category]: !prev[category]
-    }));
-  };
-
-  const getCategoryIcon = (category: string) => {
-    if (category.toLowerCase().includes('pre-onboarding')) return <FileText className="w-5 h-5" />;
-    if (category.toLowerCase().includes('tech') || category.toLowerCase().includes('integration')) return <Building className="w-5 h-5" />;
-    if (category.toLowerCase().includes('inventory')) return <Building className="w-5 h-5" />;
-    if (category.toLowerCase().includes('pilot') || category.toLowerCase().includes('uat')) return <Target className="w-5 h-5" />;
-    if (category.toLowerCase().includes('go live')) return <ArrowRight className="w-5 h-5" />;
-    return <FileText className="w-5 h-5" />;
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'critical': return 'bg-red-100 text-red-800 border-red-200';
-      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getOwnerColor = (owner: string) => {
-    switch (owner) {
-      case 'CLIENT': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'INSPIRE': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'BOTH': return 'bg-teal-100 text-teal-800 border-teal-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  // Group tasks by category
-  const groupTasksByCategory = () => {
-    const grouped: Record<string, TaskDefinition[]> = {};
-    
-    editedTasks.forEach(task => {
-      if (!grouped[task.category]) {
-        grouped[task.category] = [];
-      }
-      grouped[task.category].push(task);
-    });
-    
-    return grouped;
-  };
-
-  const groupedTasks = groupTasksByCategory();
-  const categories = Object.keys(groupedTasks).sort((a, b) => {
-    const indexA = defaultCategories.indexOf(a);
-    const indexB = defaultCategories.indexOf(b);
-    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
-  });
+  const selectedClient = clients.find(c => c.id === selectedClientId);
 
   return (
     <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-2xl border border-blue-100">
@@ -725,23 +257,14 @@ export const TaskTemplateManager: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <div className="p-3 bg-gradient-to-r from-blue-900 to-cyan-400 rounded-xl mr-4 shadow-lg">
-              <Layers className="text-white" size={24} />
+              <FileText className="text-white" size={24} />
             </div>
             <div>
               <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-900 to-cyan-400 bg-clip-text text-transparent">
-                Task Template Manager
+                Client Onboarding Manager
               </h2>
-              <p className="text-gray-600 text-sm">Create and manage onboarding workflows</p>
+              <p className="text-gray-600 text-sm">Assign Google Sheet onboarding documents to clients</p>
             </div>
-          </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setShowNewTemplateForm(true)}
-              className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-900 to-cyan-400 text-white rounded-xl hover:from-blue-800 hover:to-cyan-300 transition-all duration-300 transform hover:scale-105 shadow-lg font-bold"
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              New Template
-            </button>
           </div>
         </div>
       </div>
@@ -762,77 +285,120 @@ export const TaskTemplateManager: React.FC = () => {
         </div>
       )}
 
-      {/* New Template Form */}
-      {showNewTemplateForm && (
-        <div className="mx-6 my-4 p-6 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl border border-cyan-200 shadow-lg">
-          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-            <Sparkles className="w-5 h-5 mr-2 text-cyan-400" />
-            Create New Template
+      <div className="p-6">
+        {/* Assignment Form */}
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+            <Users className="w-5 h-5 mr-2 text-blue-600" />
+            Assign Onboarding Document
           </h3>
-          <div className="space-y-4">
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Client Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Template Name *
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Client *
+              </label>
+              <select
+                value={selectedClientId}
+                onChange={(e) => setSelectedClientId(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+              >
+                <option value="">Choose a client...</option>
+                {clients.map(client => (
+                  <option key={client.id} value={client.id}>
+                    {client.full_name || client.email} {client.company_name ? `(${client.company_name})` : ''}
+                  </option>
+                ))}
+              </select>
+              
+              {/* Selected Client Info */}
+              {selectedClient && (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center space-x-2 text-sm">
+                    <Mail className="w-4 h-4 text-blue-600" />
+                    <span className="text-blue-800">{selectedClient.email}</span>
+                  </div>
+                  {selectedClient.company_name && (
+                    <div className="flex items-center space-x-2 text-sm mt-1">
+                      <Building className="w-4 h-4 text-blue-600" />
+                      <span className="text-blue-800">{selectedClient.company_name}</span>
+                    </div>
+                  )}
+                  {selectedClient.phone && (
+                    <div className="flex items-center space-x-2 text-sm mt-1">
+                      <Phone className="w-4 h-4 text-blue-600" />
+                      <span className="text-blue-800">{selectedClient.phone}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Google Sheet URL */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Google Sheet URL *
               </label>
               <input
-                type="text"
-                value={newTemplateName}
-                onChange={(e) => setNewTemplateName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all duration-300"
-                placeholder="Enter template name"
+                type="url"
+                value={googleSheetUrl}
+                onChange={(e) => setGoogleSheetUrl(e.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/d/..."
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <textarea
-                value={newTemplateDescription}
-                onChange={(e) => setNewTemplateDescription(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all duration-300"
-                placeholder="Enter template description"
-                rows={3}
-              />
-            </div>
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => setShowNewTemplateForm(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateTemplate}
-                disabled={saving}
-                className="px-4 py-2 bg-gradient-to-r from-blue-900 to-cyan-400 text-white rounded-lg hover:from-blue-800 hover:to-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-all duration-300 font-bold"
-              >
-                {saving ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Create Template
-                  </>
-                )}
-              </button>
+              <p className="text-xs text-gray-500 mt-2">
+                Paste the shareable link to your Google Sheet with onboarding phases
+              </p>
             </div>
           </div>
-        </div>
-      )}
 
-      <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Templates List */}
-        <div className="lg:col-span-1">
-          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-            <FileText className="w-5 h-5 mr-2 text-blue-600" />
-            Templates
-          </h3>
+          {/* Instructions */}
+          <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
+            <h4 className="font-semibold text-green-800 mb-2 text-sm">How it works:</h4>
+            <ul className="text-green-700 text-xs space-y-1">
+              <li>• Select a client from the dropdown</li>
+              <li>• Paste the Google Sheet URL containing their onboarding phases</li>
+              <li>• Client will see "View Onboarding Document" button in their portal</li>
+              <li>• Client completes phases in Google Sheet and marks progress in portal</li>
+              <li>• Use the chat widget for ongoing communication</li>
+            </ul>
+          </div>
+
+          {/* Submit Button */}
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={handleAssignOnboarding}
+              disabled={!selectedClientId || !googleSheetUrl.trim() || saving}
+              className="px-6 py-3 bg-gradient-to-r from-blue-900 to-cyan-400 text-white rounded-lg hover:from-blue-800 hover:to-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 shadow-lg font-bold flex items-center"
+            >
+              {saving ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Assigning...
+                </>
+              ) : (
+                <>
+                  <Send className="w-5 h-5 mr-2" />
+                  Assign to Client
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Existing Assignments */}
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200">
+          <div className="p-6 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <FileText className="w-5 h-5 mr-2 text-blue-600" />
+              Active Onboarding Assignments ({assignments.length})
+            </h3>
+          </div>
+
           {loading ? (
             <div className="flex items-center justify-center h-32">
               <svg className="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -840,342 +406,78 @@ export const TaskTemplateManager: React.FC = () => {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             </div>
-          ) : templates.length === 0 ? (
-            <div className="text-center py-8 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 shadow-lg">
-              <FileText className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No templates</h3>
-              <p className="mt-1 text-sm text-gray-500">Get started by creating a new template.</p>
-              <div className="mt-6">
-                <button
-                  onClick={() => setShowNewTemplateForm(true)}
-                  className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-900 to-cyan-400 text-white rounded-lg hover:from-blue-800 hover:to-cyan-300 transition-all duration-300 font-bold shadow-lg"
-                >
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  New Template
-                </button>
-              </div>
+          ) : assignments.length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Assignments Yet</h3>
+              <p className="text-gray-600">
+                Start by assigning an onboarding document to a client above.
+              </p>
             </div>
           ) : (
-            <div className="space-y-3 overflow-y-auto max-h-[600px] pr-2">
-              {templates.map(template => (
-                <button
-                  key={template.id}
-                  onClick={() => handleSelectTemplate(template)}
-                  className={`w-full text-left p-4 rounded-xl border transition-all duration-300 transform hover:scale-102 shadow-lg ${
-                    selectedTemplate?.id === template.id
-                      ? 'border-cyan-400 bg-gradient-to-r from-cyan-50 to-blue-50 shadow-xl'
-                      : 'border-gray-200 hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50 hover:shadow-xl'
-                  }`}
-                >
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-medium text-gray-900">{template.name}</h4>
-                    <span className={`px-2 py-0.5 text-xs rounded-full ${
-                      template.is_active 
-                        ? 'bg-green-100 text-green-800 border border-green-200' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {template.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                    {template.description || 'No description'}
-                  </p>
-                  <div className="flex items-center mt-2 text-xs text-gray-500">
-                    <Calendar className="w-3 h-3 mr-1" />
-                    {new Date(template.created_at).toLocaleDateString()}
-                    <span className="mx-2">•</span>
-                    <span>{template.tasks?.length || 0} tasks</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Template Details */}
-        <div className="lg:col-span-3">
-          {selectedTemplate ? (
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">{selectedTemplate.name}</h3>
-                  {selectedTemplate.description && (
-                    <p className="text-gray-600 mt-1">{selectedTemplate.description}</p>
-                  )}
-                </div>
-                <div className="flex space-x-2">
-                  {editMode ? (
-                    <>
-                      <button
-                        onClick={() => {
-                          setEditMode(false);
-                          setEditedTasks(selectedTemplate.tasks || []);
-                        }}
-                        className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleSaveTemplate}
-                        disabled={saving}
-                        className="px-3 py-2 bg-gradient-to-r from-blue-900 to-cyan-400 text-white rounded-lg hover:from-blue-800 hover:to-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-all duration-300 font-bold"
-                      >
-                        {saving ? (
-                          <>
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="w-4 h-4 mr-2" />
-                            Save Changes
-                          </>
-                        )}
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => setEditMode(true)}
-                      className="px-3 py-2 bg-gradient-to-r from-blue-900 to-cyan-400 text-white rounded-lg hover:from-blue-800 hover:to-cyan-300 flex items-center transition-all duration-300 font-bold"
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit Template
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {editMode && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200 shadow-lg">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-medium text-blue-800">Edit Tasks</h4>
-                    <button
-                      onClick={() => setShowNewTaskForm(true)}
-                      className="px-3 py-1 bg-gradient-to-r from-blue-900 to-cyan-400 text-white text-sm rounded-lg hover:from-blue-800 hover:to-cyan-300 flex items-center transition-all duration-300 font-bold"
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      Add Task
-                    </button>
-                  </div>
-                  
-                  {/* New Task Form */}
-                  {showNewTaskForm && (
-                    <div className="mb-4 p-4 bg-white rounded-xl border border-gray-200 shadow-lg">
-                      <h5 className="font-medium text-gray-900 mb-3">
-                        {editingTaskIndex !== null ? 'Edit Task' : 'Add New Task'}
-                      </h5>
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Category *
-                            </label>
-                            <input
-                              type="text"
-                              value={newTask.category}
-                              onChange={(e) => setNewTask({...newTask, category: e.target.value})}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="Enter category"
-                              list="categories"
-                            />
-                            <datalist id="categories">
-                              {defaultCategories.map((cat, index) => (
-                                <option key={index} value={cat} />
-                              ))}
-                            </datalist>
+            <div className="divide-y divide-gray-200">
+              {assignments.map(assignment => (
+                <div key={assignment.id} className="p-6 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <div className="w-10 h-10 bg-gradient-to-r from-blue-900 to-cyan-400 rounded-full flex items-center justify-center">
+                          <Users className="text-white" size={16} />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-medium text-gray-900">
+                            {assignment.client.full_name || assignment.client.email}
+                          </h4>
+                          <div className="flex items-center space-x-4 text-sm text-gray-600">
+                            <div className="flex items-center">
+                              <Mail className="w-3 h-3 mr-1" />
+                              {assignment.client.email}
+                            </div>
+                            {assignment.client.company_name && (
+                              <div className="flex items-center">
+                                <Building className="w-3 h-3 mr-1" />
+                                {assignment.client.company_name}
+                              </div>
+                            )}
+                            <div className="flex items-center">
+                              <Calendar className="w-3 h-3 mr-1" />
+                              {new Date(assignment.created_at).toLocaleDateString()}
+                            </div>
                           </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Task Owner *
-                            </label>
-                            <select
-                              value={newTask.task_owner}
-                              onChange={(e) => setNewTask({...newTask, task_owner: e.target.value as any})}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="INSPIRE">INSPIRE</option>
-                              <option value="CLIENT">CLIENT</option>
-                              <option value="BOTH">BOTH</option>
-                            </select>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Task Name *
-                          </label>
-                          <input
-                            type="text"
-                            value={newTask.task_name}
-                            onChange={(e) => setNewTask({...newTask, task_name: e.target.value})}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter task name"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Description
-                          </label>
-                          <textarea
-                            value={newTask.task_description}
-                            onChange={(e) => setNewTask({...newTask, task_description: e.target.value})}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter task description"
-                            rows={2}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Priority
-                          </label>
-                          <select
-                            value={newTask.priority}
-                            onChange={(e) => setNewTask({...newTask, priority: e.target.value as any})}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                            <option value="critical">Critical</option>
-                          </select>
-                        </div>
-                        <div className="flex justify-end space-x-2">
-                          <button
-                            onClick={() => {
-                              setShowNewTaskForm(false);
-                              setEditingTaskIndex(null);
-                              setNewTask({
-                                category: '',
-                                task_name: '',
-                                task_description: '',
-                                task_owner: 'INSPIRE',
-                                priority: 'medium',
-                                sort_order: 0
-                              });
-                            }}
-                            className="px-3 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={handleAddTask}
-                            className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-                          >
-                            <Save className="w-4 h-4 mr-2" />
-                            {editingTaskIndex !== null ? 'Update Task' : 'Add Task'}
-                          </button>
                         </div>
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
 
-              {/* Tasks List */}
-              <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                {categories.map(category => {
-                  const categoryTasks = groupedTasks[category] || [];
-                  const isExpanded = expandedCategories[category] || false;
-                  
-                  return (
-                    <div key={category} className="border border-gray-200 rounded-xl overflow-hidden shadow-lg">
-                      <button
-                        onClick={() => toggleCategory(category)}
-                        className="w-full px-4 py-3 flex items-center justify-between bg-gradient-to-r from-gray-50 to-blue-50 hover:from-gray-100 hover:to-blue-100 transition-all duration-300"
+                    <div className="flex items-center space-x-3">
+                      <a
+                        href={assignment.google_sheet_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
                       >
-                        <div className="flex items-center">
-                          {getCategoryIcon(category)}
-                          <h4 className="ml-2 font-medium text-gray-900">{category}</h4>
-                        </div>
-                        <div className="flex items-center">
-                          <span className="text-sm text-gray-600 mr-2">
-                            {categoryTasks.length} tasks
-                          </span>
-                          {isExpanded ? (
-                            <ChevronUp className="w-5 h-5 text-gray-500" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5 text-gray-500" />
-                          )}
-                        </div>
+                        <Eye className="w-4 h-4 mr-1" />
+                        View Sheet
+                      </a>
+                      <a
+                        href={assignment.google_sheet_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-1" />
+                        Open
+                      </a>
+                      <button
+                        onClick={() => handleDeleteAssignment(assignment.id)}
+                        className="flex items-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Delete
                       </button>
-                      
-                      {isExpanded && (
-                        <div className="divide-y divide-gray-200">
-                          {categoryTasks.map((task, index) => {
-                            const taskIndex = editedTasks.findIndex(t => 
-                              t.task_name === task.task_name && t.category === task.category
-                            );
-                            
-                            return (
-                              <div key={index} className="p-4 hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50 transition-all duration-300">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <h5 className="font-medium text-gray-900">{task.task_name}</h5>
-                                    {task.task_description && (
-                                      <p className="text-sm text-gray-600 mt-1">{task.task_description}</p>
-                                    )}
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(task.priority)}`}>
-                                        {task.priority}
-                                      </span>
-                                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getOwnerColor(task.task_owner)}`}>
-                                        {task.task_owner}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  
-                                  {editMode && (
-                                    <div className="flex items-center space-x-1">
-                                      <button
-                                        onClick={() => handleMoveTask(taskIndex, 'up')}
-                                        disabled={taskIndex === 0}
-                                        className="p-1 text-gray-500 hover:text-blue-600 disabled:opacity-30 transition-colors"
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                          <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                                        </svg>
-                                      </button>
-                                      <button
-                                        onClick={() => handleMoveTask(taskIndex, 'down')}
-                                        disabled={taskIndex === editedTasks.length - 1}
-                                        className="p-1 text-gray-500 hover:text-blue-600 disabled:opacity-30 transition-colors"
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                          <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                        </svg>
-                                      </button>
-                                      <button
-                                        onClick={() => handleEditTask(taskIndex)}
-                                        className="p-1 text-blue-600 hover:text-cyan-400 transition-colors"
-                                      >
-                                        <Edit className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteTask(taskIndex)}
-                                        className="p-1 text-red-600 hover:text-red-800 transition-colors"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-12 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 shadow-lg">
-              <FileText className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No template selected</h3>
-              <p className="mt-1 text-sm text-gray-500">Select a template from the list or create a new one.</p>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
