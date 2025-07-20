@@ -204,7 +204,7 @@ export const TaskTemplateManager: React.FC = () => {
         p_client_id: selectedClientId,
         p_google_sheet_url: googleSheetUrl,
         p_estimated_days: estimatedDays,
-        p_admin_id: currentUserProfile?.id
+        p_admin_id: currentUserProfile?.id === 'admin-hardcoded-id' ? null : currentUserProfile?.id
       });
 
       if (error) {
