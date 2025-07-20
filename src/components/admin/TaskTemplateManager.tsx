@@ -199,75 +199,26 @@ export const TaskTemplateManager: React.FC = () => {
     try {
       setSaving(true);
 
-      // Check if client already has an onboarding
-      const { data: existingOnboarding, error: checkError } = await supabase
-        .from('client_onboarding')
-        .select('id')
-        .eq('client_id', selectedClientId)
-        .maybeSingle();
+      // Use admin RPC function to assign onboarding document
+      const { data: result, error } = await supabase.rpc('admin_assign_onboarding_document', {
+        p_client_id: selectedClientId,
+        p_google_sheet_url: googleSheetUrl,
+        p_estimated_days: estimatedDays,
+        p_admin_id: currentUserProfile?.id
+      });
 
-      if (checkError) throw checkError;
-
-      let onboardingId;
-
-      if (existingOnboarding) {
-        // Use existing onboarding
-        onboardingId = existingOnboarding.id;
-      } else {
-        // Create new onboarding
-        const { data: newOnboarding, error: onboardingError } = await supabase
-          .from('client_onboarding')
-          .insert({
-            client_id: selectedClientId,
-            current_phase: 'pre_onboarding',
-            status: 'in_progress',
-            started_at: new Date().toISOString(),
-            estimated_completion: new Date(Date.now() + estimatedDays * 24 * 60 * 60 * 1000).toISOString(),
-            data: {}
-          })
-          .select('id')
-          .single();
-
-        if (onboardingError) throw onboardingError;
-        onboardingId = newOnboarding.id;
+      if (error) {
+        console.error('RPC Error:', error);
+        throw new Error(error.message || 'Failed to assign onboarding document');
       }
 
-      // Create Google Drive resource
-      const { data: resourceData, error: resourceError } = await supabase
-        .from('google_drive_resources')
-        .insert({
-          onboarding_id: onboardingId,
-          resource_type: 'sheet',
-          title: 'Onboarding Document',
-          description: 'Interactive onboarding checklist and phase breakdown',
-          google_url: googleSheetUrl,
-          is_client_accessible: true,
-          is_required: true,
-          access_level: 'edit',
-          created_by: currentUserProfile?.id
-        })
-        .select()
-        .single();
-
-      if (resourceError) throw resourceError;
-
-      // Create notification for client
-      const selectedClient = clients.find(c => c.id === selectedClientId);
-      if (selectedClient) {
-        await supabase
-          .from('notifications')
-          .insert({
-            user_id: selectedClientId,
-            title: 'Onboarding Document Available',
-            message: 'Your onboarding document has been assigned. Click to view and complete your onboarding phases.',
-            type: 'info',
-            action_url: '/resources'
-          });
+      if (!result?.success) {
+        throw new Error(result?.error || result?.message || 'Failed to assign onboarding document');
       }
 
       setMessage({
         type: 'success',
-        text: `Onboarding document successfully assigned to ${selectedClient?.full_name || selectedClient?.email}`
+        text: `Onboarding document successfully assigned to ${result.client_name}`
       });
 
       // Reset form
