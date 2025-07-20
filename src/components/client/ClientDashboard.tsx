@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { FileText, CheckCircle, Clock, AlertCircle, Download, Eye, Calendar, User, Building, Mail, Phone, Bell, Settings, BarChart3, FileCheck, Upload, PenTool, ExternalLink, LogOut, ChevronDown, ChevronUp, MessageSquare, Target, CheckSquare, ArrowRight } from 'lucide-react';
+import { FileText, CheckCircle, Eye, User, Building, Bell, BarChart3, PenTool, ExternalLink, LogOut, ChevronDown, ChevronUp, MessageSquare, Target, CheckSquare, ArrowRight } from 'lucide-react';
 
 interface Profile {
   id: string;

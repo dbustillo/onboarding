@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserPlus, Mail, Lock, User, Building, Phone, AlertCircle, CheckCircle, Shield } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, Building, Phone, CheckCircle, Shield } from 'lucide-react';
 
 interface SignUpFormProps {
   onToggleMode: () => void;

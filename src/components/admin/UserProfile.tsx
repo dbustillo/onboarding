@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, User, Building, Mail, Phone, Calendar, Upload, Download, CheckCircle, Clock, MessageSquare, FileText, Target, AlertCircle, Plus, Edit, Save, X } from 'lucide-react';
+import { ArrowLeft, User, Building, Mail, Phone, CheckCircle, MessageSquare, FileText, Target, AlertCircle, Plus, Edit, Save, X } from 'lucide-react';
 import { supabase, Profile } from '../../lib/supabase';
 import { DocumentUpload } from './DocumentUpload';
 
