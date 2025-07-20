@@ -103,15 +103,17 @@ export const TaskTemplateManager: React.FC = () => {
       }
 
       // Fetch existing onboarding assignments using admin function if needed
+      console.log('🔍 Fetching onboarding assignments...');
       
+      // First, get all Google Drive resources that are onboarding sheets
       const { data: resourcesData, error: resourcesError } = await supabase
         .from('google_drive_resources')
         .select(`
           id,
+          onboarding_id,
           title,
           google_url,
-          created_at,
-          onboarding_id
+          created_at
         `)
         .eq('resource_type', 'sheet')
         .eq('is_client_accessible', true)
@@ -119,71 +121,105 @@ export const TaskTemplateManager: React.FC = () => {
 
       if (resourcesError) {
         console.error('❌ Error fetching assignments:', resourcesError);
-        setMessage({
-          type: 'error',
-          text: `Error fetching assignments: ${resourcesError.message}`
-        });
+        // Don't show error to user, just log it
+        console.error('Failed to fetch Google Drive resources:', resourcesError);
+        setAssignments([]);
       } else {
         console.log('✅ Assignments fetched:', resourcesData?.length || 0);
-        console.log('Assignment data:', resourcesData);
         
         if (resourcesData) {
-          // For each resource, fetch the client details separately
-          const assignmentsWithClients = [];
+          console.log('📋 Processing', resourcesData.length, 'resources...');
+          const assignmentsWithClients: OnboardingAssignment[] = [];
           
           for (const resource of resourcesData) {
+            console.log('🔄 Processing resource:', resource.id, 'for onboarding:', resource.onboarding_id);
+            
             try {
-              // Get the onboarding record to find the client_id
+              if (!resource.onboarding_id) {
+                console.log('⚠️ Skipping resource without onboarding_id:', resource.id);
+                continue;
+              }
+              
+              // Get the client_id from the onboarding record
               const { data: onboardingData, error: onboardingError } = await supabase
                 .from('client_onboarding')
                 .select('client_id')
                 .eq('id', resource.onboarding_id)
-                .single();
+                .maybeSingle();
                 
-              if (!onboardingError && onboardingData) {
-                // Get the client profile
-                let clientData;
-                let clientError;
-                
-                if (isHardcodedAdmin) {
-                  // Use admin function for hardcoded admin
-                  const { data: allProfiles, error } = await supabase.rpc('admin_get_all_profiles');
-                  if (!error && allProfiles) {
-                    clientData = allProfiles.find(p => p.id === onboardingData.client_id);
-                  }
-                  clientError = error;
-                } else {
-                  // Direct query for database admin
-                  const { data, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', onboardingData.client_id)
-                    .single();
-                  clientData = data;
-                  clientError = error;
-                }
-                
-                if (!clientError && clientData) {
-                  assignmentsWithClients.push({
-                    id: resource.id,
-                    client_id: onboardingData.client_id,
-                    google_sheet_url: resource.google_url,
-                    created_at: resource.created_at,
-                    client: {
-                      full_name: clientData.full_name,
-                      email: clientData.email,
-                      company_name: clientData.company_name
-                    }
-                  });
-                }
+              if (onboardingError) {
+                console.error('❌ Error fetching onboarding for resource:', resource.id, onboardingError);
+                continue;
               }
+              
+              if (!onboardingData) {
+                console.log('⚠️ No onboarding data found for resource:', resource.id);
+                continue;
+              }
+              
+              console.log('✅ Found client_id:', onboardingData.client_id, 'for resource:', resource.id);
+              
+              // Get the client profile
+              let clientData;
+              let clientError;
+              
+              if (isHardcodedAdmin) {
+                console.log('🔧 Using admin function to get client profile');
+                const { data: allProfiles, error } = await supabase.rpc('admin_get_all_profiles');
+                if (!error && allProfiles) {
+                  clientData = allProfiles.find(p => p.id === onboardingData.client_id);
+                  if (!clientData) {
+                    console.log('⚠️ Client not found in admin profiles for ID:', onboardingData.client_id);
+                  }
+                }
+                clientError = error;
+              } else {
+                console.log('🔍 Using direct query to get client profile');
+                const { data, error } = await supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('id', onboardingData.client_id)
+                  .single();
+                clientData = data;
+                clientError = error;
+              }
+              
+              if (clientError) {
+                console.error('❌ Error fetching client profile:', clientError);
+                continue;
+              }
+              
+              if (!clientData) {
+                console.log('⚠️ No client data found for ID:', onboardingData.client_id);
+                continue;
+              }
+              
+              console.log('✅ Found client:', clientData.email, 'for resource:', resource.id);
+              
+              // Add to assignments list
+              assignmentsWithClients.push({
+                id: resource.id,
+                client_id: onboardingData.client_id,
+                google_sheet_url: resource.google_url,
+                created_at: resource.created_at,
+                client: {
+                  full_name: clientData.full_name,
+                  email: clientData.email,
+                  company_name: clientData.company_name
+                }
+              });
+                
+              console.log('✅ Successfully processed assignment for:', clientData.email);
             } catch (err) {
-              console.error('Error processing assignment:', err);
+              console.error('❌ Error processing assignment for resource:', resource.id, err);
             }
           }
           
           console.log('✅ Processed assignments:', assignmentsWithClients.length);
           setAssignments(assignmentsWithClients);
+        } else {
+          console.log('📭 No resources data returned');
+          setAssignments([]);
         }
       }
 
@@ -191,8 +227,9 @@ export const TaskTemplateManager: React.FC = () => {
       console.error('Error fetching data:', error);
       setMessage({
         type: 'error',
-        text: `Failed to load data: ${error instanceof Error ? error.message : 'Unknown error'}`
+        text: 'Failed to load data. Check console for details.'
       });
+      setAssignments([]);
     } finally {
       setLoading(false);
     }
