@@ -59,23 +59,29 @@ export const TaskTemplateManager: React.FC = () => {
     try {
       setLoading(true);
       
-      // Fetch approved clients only
+      console.log('🔍 Fetching clients from profiles table...');
+      
+      // Fetch clients from profiles table - only clients with approved/active status
       const { data: clientsData, error: clientsError } = await supabase
         .from('profiles')
         .select('*')
         .eq('role', 'client')
-        .in('status', ['approved', 'active'])
+        .in('status', ['approved', 'active', 'pending'])
         .order('created_at', { ascending: false });
 
       if (clientsError) {
         console.error('Error fetching clients:', clientsError);
-        throw clientsError;
+        setMessage({
+          type: 'error',
+          text: `Error fetching clients: ${clientsError.message}`
+        });
+        setClients([]);
+      } else {
+        console.log('✅ Clients fetched successfully:', clientsData?.length || 0, clientsData);
+        setClients(clientsData || []);
       }
-      
-      console.log('Clients fetched:', clientsData?.length || 0);
-      setClients(clientsData || []);
 
-      // Fetch existing onboarding assignments with Google Drive resources
+      // Fetch existing onboarding assignments
       const { data: resourcesData, error: resourcesError } = await supabase
         .from('google_drive_resources')
         .select(`
@@ -96,22 +102,27 @@ export const TaskTemplateManager: React.FC = () => {
         .eq('is_client_accessible', true)
         .order('created_at', { ascending: false });
 
-      if (!resourcesError && resourcesData) {
-        const formattedAssignments = resourcesData.map(resource => ({
-          id: resource.id,
-          client_id: resource.client_onboarding.client_id,
-          google_sheet_url: resource.google_url,
-          created_at: resource.created_at,
-          client: resource.client_onboarding.profiles
-        }));
-        setAssignments(formattedAssignments);
+      if (resourcesError) {
+        console.error('Error fetching assignments:', resourcesError);
+      } else {
+        console.log('✅ Assignments fetched:', resourcesData?.length || 0);
+        if (resourcesData) {
+          const formattedAssignments = resourcesData.map(resource => ({
+            id: resource.id,
+            client_id: resource.client_onboarding.client_id,
+            google_sheet_url: resource.google_url,
+            created_at: resource.created_at,
+            client: resource.client_onboarding.profiles
+          }));
+          setAssignments(formattedAssignments);
+        }
       }
 
     } catch (error) {
       console.error('Error fetching data:', error);
       setMessage({
         type: 'error',
-        text: 'Failed to load data'
+        text: `Failed to load data: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
     } finally {
       setLoading(false);
@@ -318,10 +329,23 @@ export const TaskTemplateManager: React.FC = () => {
                 <option value="">Choose a client...</option>
                 {clients.map(client => (
                   <option key={client.id} value={client.id}>
-                    {client.full_name || client.email} {client.company_name ? `(${client.company_name})` : ''}
+                    {client.full_name || client.email}{client.company_name ? ` - ${client.company_name}` : ''}
                   </option>
                 ))}
               </select>
+              
+              {/* Debug info */}
+              {clients.length === 0 && !loading && (
+                <p className="text-xs text-red-600 mt-1">
+                  No clients found. Check if there are approved clients in the profiles table.
+                </p>
+              )}
+              
+              {loading && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Loading clients...
+                </p>
+              )}
               
               {/* Selected Client Info */}
               {selectedClient && (
