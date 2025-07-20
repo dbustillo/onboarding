@@ -106,9 +106,6 @@ export const TaskTemplateManager: React.FC = () => {
       let resourcesData;
       let resourcesError;
       
-      // Try to fetch assignments using a simpler approach
-      console.log('🔍 Fetching onboarding assignments...');
-      
       const { data: resourcesData, error: resourcesError } = await supabase
         .from('google_drive_resources')
         .select(`
