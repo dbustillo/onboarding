@@ -321,17 +321,6 @@ export const AdminDashboard: React.FC = () => {
               Users
             </button>
             <button
-              onClick={() => setActiveView('tasks')}
-              className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
-                activeView === 'tasks'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <FileText className="mr-2" size={16} />
-              Task Templates
-            </button>
-            <button
               onClick={() => setActiveView('onboarding')}
               className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
                 activeView === 'onboarding'
@@ -402,8 +391,6 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </>
         )}
-        
-        {activeView === 'tasks' && <TaskTemplateManager />}
         
         {activeView === 'onboarding' && <TaskTemplateManager />}
       </div>
