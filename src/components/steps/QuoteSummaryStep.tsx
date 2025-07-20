@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Download, ChevronDown, ChevronUp, Calendar, Calculator, Shield } from 'lucide-react';
+import { FileText, ChevronDown, ChevronUp, Calculator, Shield } from 'lucide-react';
 import { CostBreakdown } from '../../types';
 
 interface QuoteSummaryStepProps {

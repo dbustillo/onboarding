@@ -72,11 +72,6 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ isVisible = true }) => {
   const lastAIMessageRef = useRef<HTMLDivElement>(null);
   const { isKeyboardVisible, keyboardHeight } = useKeyboardDetection();
 
-  const scrollToTop = () => {
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = 0;
-    }
-  };
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
@@ -90,8 +85,6 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ isVisible = true }) => {
       const lastAIMessage = lastAIMessageRef.current;
       
       // Calculate the position to scroll to the top of the last AI message
-      const containerRect = container.getBoundingClientRect();
-      const messageRect = lastAIMessage.getBoundingClientRect();
       const scrollTop = lastAIMessage.offsetTop - container.offsetTop;
       
       container.scrollTop = scrollTop;

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, Profile } from '../lib/supabase';
 
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [signingOut, setSigningOut] = useState(false);
 
   // Simple profile fetching function
-  const fetchProfile = async (user: User): Promise<Profile | null> => {
+  const fetchProfile = useCallback(async (user: User): Promise<Profile | null> => {
     try {
       console.log('🔍 Fetching profile for user ID:', user.id, 'Email:', user.email);
       
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('💥 Profile fetch error:', error);
       return null;
     }
-  };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -380,11 +380,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
-  const isAdmin = profile?.role === 'admin' && profile?.status === 'approved';
-  const isClient = profile?.role === 'client';
-  const isApproved = profile?.status === 'approved' || profile?.status === 'active' || profile?.role === 'admin';
+  const isAdmin = useMemo(() => profile?.role === 'admin' && profile?.status === 'approved', [profile?.role, profile?.status]);
+  const isClient = useMemo(() => profile?.role === 'client', [profile?.role]);
+  const isApproved = useMemo(() => profile?.status === 'approved' || profile?.status === 'active' || profile?.role === 'admin', [profile?.status, profile?.role]);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     profile,
     session,
@@ -400,7 +400,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAdmin,
     isClient,
     isApproved,
-  };
+  }), [
+    user,
+    profile,
+    session,
+    loading,
+    signingOut,
+    signIn,
+    signUp,
+    signOut,
+    handleSignOutClick,
+    retryProfileFetch,
+    skipProfileAndContinue,
+    updateProfile,
+    isAdmin,
+    isClient,
+    isApproved,
+  ]);
 
   return (
     <AuthContext.Provider value={value}>
