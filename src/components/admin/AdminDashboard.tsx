@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Shield, Users, ClipboardList, Settings, LogOut, CheckCircle, XCircle, Clock, Mail, Building, Phone, User, AlertCircle, FileText, Plus } from 'lucide-react';
+import { Shield, Users, ClipboardList, Settings, LogOut, CheckCircle, XCircle, Clock, Mail, Building, Phone, User, AlertCircle, FileText, Plus, Loader2 } from 'lucide-react';
 import { supabase, Profile } from '../../lib/supabase';
 import { UserProfile } from './UserProfile';
 import { TaskTemplateManager } from './TaskTemplateManager';
@@ -339,6 +339,7 @@ export const AdminDashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeView === 'users' && (
           <>
+            {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Quick Stats */}
           <div className="bg-white rounded-2xl shadow-xl border border-cyan-100 p-6">
@@ -388,6 +389,254 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
           </div>
+            </div>
+
+            {/* Pending Approvals Section */}
+            {pendingUsers.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-xl border border-yellow-100 mb-8">
+                <div className="p-6 border-b border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="p-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl mr-4 shadow-lg">
+                        <Clock className="text-white" size={24} />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-800">Pending Approvals</h3>
+                        <p className="text-gray-600 text-sm">Users waiting for account approval</p>
+                      </div>
+                    </div>
+                    <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+                      {pendingUsers.length} pending
+                    </span>
+                  </div>
+                </div>
+                <div className="divide-y divide-gray-200">
+                  {pendingUsers.map((user) => (
+                    <div key={user.id} className="p-6 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center shadow-lg">
+                            <User className="text-white" size={20} />
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-semibold text-gray-900">
+                              {user.full_name || 'Unnamed User'}
+                            </h4>
+                            <div className="flex items-center space-x-4 text-sm text-gray-600">
+                              <div className="flex items-center">
+                                <Mail className="w-4 h-4 mr-1" />
+                                {user.email}
+                              </div>
+                              {user.company_name && (
+                                <div className="flex items-center">
+                                  <Building className="w-4 h-4 mr-1" />
+                                  {user.company_name}
+                                </div>
+                              )}
+                              {user.phone && (
+                                <div className="flex items-center">
+                                  <Phone className="w-4 h-4 mr-1" />
+                                  {user.phone}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center mt-2 text-xs text-gray-500">
+                              <Calendar className="w-3 h-3 mr-1" />
+                              Registered: {new Date(user.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => approveUser(user.email)}
+                            disabled={actionLoading === user.email}
+                            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium shadow-lg"
+                          >
+                            {actionLoading === user.email ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                            )}
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => promoteToAdmin(user.email)}
+                            disabled={actionLoading === user.email}
+                            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium shadow-lg"
+                          >
+                            {actionLoading === user.email ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Shield className="w-4 h-4 mr-2" />
+                            )}
+                            Make Admin
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* All Users Management */}
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200">
+              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="p-3 bg-gradient-to-r from-blue-900 to-cyan-400 rounded-xl mr-4 shadow-lg">
+                      <Users className="text-white" size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-800">All Users</h3>
+                      <p className="text-gray-600 text-sm">Manage all user accounts and permissions</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                      {allUsers.length} total users
+                    </span>
+                    <button
+                      onClick={fetchUsers}
+                      className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              {loading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading users...</p>
+                  </div>
+                </div>
+              ) : allUsers.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Users Found</h3>
+                  <p className="text-gray-600">
+                    No users have been registered yet.
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {allUsers.map((user) => (
+                    <div key={user.id} className="p-6 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg ${
+                            user.role === 'admin' 
+                              ? 'bg-gradient-to-r from-purple-600 to-purple-500' 
+                              : 'bg-gradient-to-r from-blue-600 to-cyan-400'
+                          }`}>
+                            {user.role === 'admin' ? (
+                              <Shield className="text-white" size={20} />
+                            ) : (
+                              <User className="text-white" size={20} />
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center space-x-3">
+                              <h4 className="text-lg font-semibold text-gray-900">
+                                {user.full_name || 'Unnamed User'}
+                              </h4>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
+                                {user.role}
+                              </span>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}>
+                                {user.status}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                              <div className="flex items-center">
+                                <Mail className="w-4 h-4 mr-1" />
+                                {user.email}
+                              </div>
+                              {user.company_name && (
+                                <div className="flex items-center">
+                                  <Building className="w-4 h-4 mr-1" />
+                                  {user.company_name}
+                                </div>
+                              )}
+                              {user.phone && (
+                                <div className="flex items-center">
+                                  <Phone className="w-4 h-4 mr-1" />
+                                  {user.phone}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center mt-2 text-xs text-gray-500">
+                              <Calendar className="w-3 h-3 mr-1" />
+                              Joined: {new Date(user.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3">
+                          {/* View Profile Button */}
+                          <button
+                            onClick={() => setSelectedUserId(user.id)}
+                            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-lg"
+                          >
+                            <User className="w-4 h-4 mr-2" />
+                            View Profile
+                          </button>
+                          
+                          {/* Action Buttons */}
+                          {user.status === 'pending' && (
+                            <button
+                              onClick={() => approveUser(user.email)}
+                              disabled={actionLoading === user.email}
+                              className="flex items-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                            >
+                              {actionLoading === user.email ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
+                          
+                          {user.role !== 'admin' && user.status !== 'pending' && (
+                            <button
+                              onClick={() => promoteToAdmin(user.email)}
+                              disabled={actionLoading === user.email}
+                              className="flex items-center px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                            >
+                              {actionLoading === user.email ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Shield className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
+                          
+                          {user.status !== 'suspended' && user.email !== profile?.email && (
+                            <button
+                              onClick={() => suspendUser(user.email)}
+                              disabled={actionLoading === user.email}
+                              className="flex items-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                            >
+                              {actionLoading === user.email ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <XCircle className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}
