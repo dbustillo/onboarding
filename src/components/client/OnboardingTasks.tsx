@@ -4,7 +4,7 @@ import {
   CheckCircle, 
   Clock, AlertCircle, ChevronDown, ChevronUp, MessageSquare, 
   CheckSquare, Calendar, User, Building, ArrowRight,
-  Target, FileText, Loader2, Edit, Save, X, Plus
+  Target, FileText, Loader2, Edit, Save, X, Plus, Trash2
 } from 'lucide-react';
 
 interface Task {
@@ -327,12 +327,6 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
   const [editingTask, setEditingTask] = useState<string | null>(null);
   const [editingTaskData, setEditingTaskData] = useState<Partial<Task>>({});
   const [editingDates, setEditingDates] = useState<Record<string, { target: string; actual: string }>>({});
-  const [editingTaskData, setEditingTaskData] = useState<Record<string, {
-    task_name: string;
-    task_description: string;
-    priority: string;
-    task_owner: string;
-  }>>({});
 
   // Group tasks by category
   const groupedTasks = tasks.reduce((acc, task) => {
@@ -397,7 +391,6 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
       // Initialize task notes from existing client notes
       const initialNotes: Record<string, string> = {};
       const initialDates: Record<string, { target: string; actual: string }> = {};
-      const initialTaskData: Record<string, { task_name: string; task_description: string; priority: string; task_owner: string }> = {};
       data?.forEach(task => {
         if (task.client_notes) {
           initialNotes[task.id] = task.client_notes;
@@ -410,18 +403,9 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
           target: task.due_date ? task.due_date.split('T')[0] : '',
           actual: task.completed_at ? task.completed_at.split('T')[0] : ''
         };
-        
-        // Initialize task editing state
-        initialTaskData[task.id] = {
-          task_name: task.task_name,
-          task_description: task.task_description || '',
-          priority: task.priority,
-          task_owner: task.task_owner
-        };
       });
       setTaskNotes(initialNotes);
       setEditingDates(initialDates);
-      setEditingTaskData(initialTaskData);
       
       // Initialize expanded categories
       const initialExpandedCategories: Record<string, boolean> = {};
@@ -489,6 +473,10 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
     } catch (error) {
       console.error('Error updating task notes:', error);
       setToastMessage('Failed to update notes');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    }
+  };
 
   const updateTask = async (taskId: string, updates: Partial<Task>) => {
     try {
@@ -505,12 +493,16 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
         task.id === taskId ? { ...task, ...updates } : task
       ));
       
-      showToastMessage('Task updated successfully');
+      setToastMessage('Task updated successfully');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
       setEditingTask(null);
       setEditingTaskData({});
     } catch (error) {
       console.error('Error updating task:', error);
-      showToastMessage('Failed to update task');
+      setToastMessage('Failed to update task');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
     } finally {
       setSaving(false);
     }
@@ -528,10 +520,14 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
       if (error) throw error;
       
       setTasks(prev => prev.filter(task => task.id !== taskId));
-      showToastMessage('Task deleted successfully');
+      setToastMessage('Task deleted successfully');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
     } catch (error) {
       console.error('Error deleting task:', error);
-      showToastMessage('Failed to delete task');
+      setToastMessage('Failed to delete task');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
     }
   };
 
@@ -561,10 +557,14 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
       if (error) throw error;
       
       setTasks(prev => [...prev, data]);
-      showToastMessage('New task added');
+      setToastMessage('New task added');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
     } catch (error) {
       console.error('Error adding task:', error);
-      showToastMessage('Failed to add task');
+      setToastMessage('Failed to add task');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
     }
   };
 
@@ -578,180 +578,6 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
       status: task.status,
       due_date: task.due_date
     });
-  };
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    }
-  };
-
-  const updateTaskDates = async (taskId: string) => {
-    try {
-      const dates = editingDates[taskId];
-      const { error } = await supabase
-        .from('onboarding_tasks')
-        .update({ 
-          due_date: dates.target ? new Date(dates.target).toISOString() : null,
-          completed_at: dates.actual ? new Date(dates.actual).toISOString() : null
-        })
-        .eq('id', taskId);
-
-      if (error) throw error;
-      
-      // Update local state
-      setTasks(prev => 
-        prev.map(task => 
-          task.id === taskId 
-            ? { 
-                ...task, 
-                due_date: dates.target ? new Date(dates.target).toISOString() : null,
-                completed_at: dates.actual ? new Date(dates.actual).toISOString() : null
-              }
-            : task
-        )
-      );
-      
-      setToastMessage('Dates updated successfully');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    } catch (error) {
-      console.error('Error updating task dates:', error);
-      setToastMessage('Failed to update dates');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    }
-  };
-
-  const updateTaskData = async (taskId: string) => {
-    try {
-      const taskData = editingTaskData[taskId];
-      const { error } = await supabase
-        .from('onboarding_tasks')
-        .update({
-          task_name: taskData.task_name,
-          task_description: taskData.task_description,
-          priority: taskData.priority,
-          task_owner: taskData.task_owner
-        })
-        .eq('id', taskId);
-
-      if (error) throw error;
-      
-      // Update local state
-      setTasks(prev => 
-        prev.map(task => 
-          task.id === taskId 
-            ? { 
-                ...task, 
-                task_name: taskData.task_name,
-                task_description: taskData.task_description,
-                priority: taskData.priority,
-                task_owner: taskData.task_owner
-              }
-            : task
-        )
-      );
-      
-      setToastMessage('Task updated successfully');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    } catch (error) {
-      console.error('Error updating task data:', error);
-      setToastMessage('Failed to update task');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    }
-  };
-
-  const deleteTask = async (taskId: string) => {
-    if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('onboarding_tasks')
-        .delete()
-        .eq('id', taskId);
-
-      if (error) throw error;
-      
-      // Update local state
-      setTasks(prev => prev.filter(task => task.id !== taskId));
-      
-      setToastMessage('Task deleted successfully');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      setToastMessage('Failed to delete task');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    }
-  };
-
-  const addNewTask = async (category: string) => {
-    if (!onboardingId) {
-      setToastMessage('Cannot add task: No onboarding process exists');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-      return;
-    }
-
-    try {
-      const categoryTasks = tasks.filter(t => t.category === category);
-      const maxSortOrder = Math.max(...categoryTasks.map(t => t.sort_order), -1);
-      
-      const { data, error } = await supabase
-        .from('onboarding_tasks')
-        .insert({
-          onboarding_id: onboardingId,
-          category: category,
-          task_name: 'New Task',
-          task_description: 'Task description',
-          task_owner: 'CLIENT',
-          status: 'not_started',
-          priority: 'medium',
-          sort_order: maxSortOrder + 1,
-          metadata: {}
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      // Add to local state
-      setTasks(prev => [...prev, data]);
-      
-      // Initialize editing states for new task
-      setEditingTaskData(prev => ({
-        ...prev,
-        [data.id]: {
-          task_name: data.task_name,
-          task_description: data.task_description,
-          priority: data.priority,
-          task_owner: data.task_owner
-        }
-      }));
-      
-      setEditingDates(prev => ({
-        ...prev,
-        [data.id]: { target: '', actual: '' }
-      }));
-      
-      setTaskNotes(prev => ({
-        ...prev,
-        [data.id]: ''
-      }));
-      
-      setToastMessage('New task added successfully');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    } catch (error) {
-      console.error('Error adding new task:', error);
-      setToastMessage('Failed to add new task');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    }
   };
 
   const toggleCategory = (category: string) => {
@@ -995,111 +821,55 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
             </button>
             
             {/* Tasks List */}
-            {isExpanded && (
-              <div className="divide-y divide-gray-200">
-                {groupedTasks[category]?.map(task => (
-                  <div key={task.id} className="p-6 hover:bg-gray-50 transition-colors">
-                    <div className="space-y-4">
-                      {/* Task Header with Edit Controls */}
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center flex-1">
-                            {task.status === 'completed' ? (
-                              <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                            ) : (
-                              <Clock className="w-5 h-5 text-blue-500 mr-2" />
-                            )}
-                            {isAdminView && editingTask === task.id ? (
-                              <input
-                                type="text"
-                                value={editingTaskData[task.id]?.task_name || task.task_name}
-                                onChange={(e) => setEditingTaskData(prev => ({
-                                  ...prev,
-                                  [task.id]: { ...prev[task.id], task_name: e.target.value }
-                                }))}
-                                className="text-lg font-medium text-gray-900 bg-transparent border-none outline-none focus:bg-white focus:border focus:border-blue-300 rounded px-2 py-1 flex-1"
-                                placeholder="Task name"
-                              />
-                            ) : (
-                              <h4 className="text-lg font-medium text-gray-900">{task.task_name}</h4>
-                            )}
-                          </div>
-                          
-                          {/* Admin Action Buttons */}
-                          {isAdminView && (
-                            <div className="flex items-center space-x-2 ml-4">
-                              {editingTask === task.id ? (
-                                <>
-                                  <button
-                                    onClick={() => {
-                                      updateTaskData(task.id);
-                                      setEditingTask(null);
-                                    }}
-                                    className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
-                                    title="Save Changes"
-                                  >
-                                    Save
-                                  </button>
-                                  <button
-                                    onClick={() => setEditingTask(null)}
-                                    className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colors"
-                                    title="Cancel"
-                                  >
-                                    Cancel
-                                  </button>
-                                </>
-                              ) : (
-                                <button
-                                  onClick={() => setEditingTask(task.id)}
-                                  className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
-                                  title="Edit Task"
-                                >
-                                  Edit
-                                </button>
-                              )}
+            {expandedCategories[category] && (
+              <div className="p-4">
+                <div className="space-y-4">
+                  {groupedTasks[category]?.map(task => (
+                    <div key={task.id} className="border rounded-lg p-4">
+                      {/* Admin Editing Interface */}
+                      {isAdminView && editingTask === task.id ? (
+                        <div className="space-y-4 bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-lg font-semibold text-blue-800">Editing Task</h4>
+                            <div className="flex space-x-2">
                               <button
-                                onClick={() => deleteTask(task.id)}
-                                className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
-                                title="Delete Task"
+                                onClick={() => updateTask(task.id, editingTaskData)}
+                                disabled={saving}
+                                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                               >
-                                Delete
+                                <Save className="w-4 h-4 mr-2" />
+                                {saving ? 'Saving...' : 'Save'}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingTask(null);
+                                  setEditingTaskData({});
+                                }}
+                                className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                              >
+                                <X className="w-4 h-4 mr-2" />
+                                Cancel
                               </button>
                             </div>
-                          )}
-                        </div>
-                        
-                        {/* Task Description */}
-                        <div className="mb-4">
-                          {isAdminView && editingTask === task.id ? (
-                            <textarea
-                              value={editingTaskData[task.id]?.task_description || task.task_description || ''}
-                              onChange={(e) => setEditingTaskData(prev => ({
-                                ...prev,
-                                [task.id]: { ...prev[task.id], task_description: e.target.value }
-                              }))}
-                              className="w-full text-gray-600 bg-transparent border-none outline-none focus:bg-white focus:border focus:border-blue-300 rounded px-2 py-1 resize-none"
-                              rows={2}
-                              placeholder="Task description"
-                            />
-                          ) : (
-                            task.task_description && (
-                              <p className="text-gray-600">{task.task_description}</p>
-                            )
-                          )}
-                        </div>
-                        
-                        {/* Admin Edit Controls */}
-                        {isAdminView && editingTask === task.id && (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Task Name</label>
+                              <input
+                                type="text"
+                                value={editingTaskData.task_name || ''}
+                                onChange={(e) => setEditingTaskData(prev => ({ ...prev, task_name: e.target.value }))}
+                                className="w-full p-2 border border-gray-300 rounded-md"
+                              />
+                            </div>
+                            
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
                               <select
-                                value={editingTaskData[task.id]?.priority || task.priority}
-                                onChange={(e) => setEditingTaskData(prev => ({
-                                  ...prev,
-                                  [task.id]: { ...prev[task.id], priority: e.target.value }
-                                }))}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                value={editingTaskData.priority || 'medium'}
+                                onChange={(e) => setEditingTaskData(prev => ({ ...prev, priority: e.target.value as any }))}
+                                className="w-full p-2 border border-gray-300 rounded-md"
                               >
                                 <option value="low">Low</option>
                                 <option value="medium">Medium</option>
@@ -1111,12 +881,9 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
                               <select
-                                value={editingTaskData[task.id]?.task_owner || task.task_owner}
-                                onChange={(e) => setEditingTaskData(prev => ({
-                                  ...prev,
-                                  [task.id]: { ...prev[task.id], task_owner: e.target.value }
-                                }))}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                value={editingTaskData.task_owner || 'CLIENT'}
+                                onChange={(e) => setEditingTaskData(prev => ({ ...prev, task_owner: e.target.value as any }))}
+                                className="w-full p-2 border border-gray-300 rounded-md"
                               >
                                 <option value="CLIENT">CLIENT</option>
                                 <option value="INSPIRE">INSPIRE</option>
@@ -1127,9 +894,9 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                               <select
-                                value={task.status}
-                                onChange={(e) => updateTaskStatus(task.id, e.target.value as any)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                value={editingTaskData.status || 'not_started'}
+                                onChange={(e) => setEditingTaskData(prev => ({ ...prev, status: e.target.value as any }))}
+                                className="w-full p-2 border border-gray-300 rounded-md"
                               >
                                 <option value="not_started">Not Started</option>
                                 <option value="in_progress">In Progress</option>
@@ -1139,187 +906,180 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                                 <option value="blocked">Blocked</option>
                               </select>
                             </div>
-                          </div>
-                        )}
-                        
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(task.status)}`}>
-                            <span className="mr-1">{getStatusIcon(task.status)}</span>
-                            {task.status.replace('_', ' ')}
-                          </span>
-                          
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(task.priority)}`}>
-                            {task.priority}
-                          </span>
-                          
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getOwnerColor(task.task_owner)}`}>
-                            {task.task_owner}
-                          </span>
-                        </div>
-
-                        {/* Date Management (Admin View Only) */}
-                        {isAdminView && editingTask === task.id && (
-                          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                            <h5 className="text-sm font-medium text-gray-700 mb-3">Date Management</h5>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Target Date
-                                </label>
-                                <input
-                                  type="date"
-                                  value={editingDates[task.id]?.target || ''}
-                                  onChange={(e) => setEditingDates(prev => ({
-                                    ...prev,
-                                    [task.id]: { ...prev[task.id], target: e.target.value }
-                                  }))}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Actual Date
-                                </label>
-                                <input
-                                  type="date"
-                                  value={editingDates[task.id]?.actual || ''}
-                                  onChange={(e) => setEditingDates(prev => ({
-                                    ...prev,
-                                    [task.id]: { ...prev[task.id], actual: e.target.value }
-                                  }))}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                              </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Target Date</label>
+                              <input
+                                type="date"
+                                value={editingTaskData.due_date ? editingTaskData.due_date.split('T')[0] : ''}
+                                onChange={(e) => setEditingTaskData(prev => ({ 
+                                  ...prev, 
+                                  due_date: e.target.value ? new Date(e.target.value).toISOString() : null 
+                                }))}
+                                className="w-full p-2 border border-gray-300 rounded-md"
+                              />
                             </div>
-                            <button
-                              onClick={() => updateTaskDates(task.id)}
-                              className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                              Update Dates
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Display dates */}
-                        {(task.due_date || task.completed_at) && (
-                          <div className="mb-3 flex flex-wrap gap-2">
-                            {task.due_date && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                                <Calendar className="w-3 h-3 mr-1" />
-                                Target: {new Date(task.due_date).toLocaleDateString()}
-                              </span>
-                            )}
-                            {task.completed_at && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Completed: {new Date(task.completed_at).toLocaleDateString()}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        
-                        {/* Client Notes */}
-                        <div className="mt-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <label className="text-sm font-medium text-gray-700 flex items-center">
-                              <MessageSquare className="w-4 h-4 text-blue-600 mr-1" />
-                              {isAdminView ? 'Client Notes:' : 'Your Notes:'}
-                            </label>
-                            {editingTask === task.id ? (
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => updateTaskNotes(task.id)}
-                                  className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  onClick={() => setEditingTask(null)}
-                                  className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => setEditingTask(task.id)}
-                                className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                              >
-                                {task.client_notes ? 'Edit Notes' : 'Add Notes'}
-                              </button>
-                            )}
                           </div>
                           
-                          {editingTask === task.id ? (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                             <textarea
-                              value={taskNotes[task.id] || ''}
-                              onChange={(e) => setTaskNotes({...taskNotes, [task.id]: e.target.value})}
-                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                              value={editingTaskData.task_description || ''}
+                              onChange={(e) => setEditingTaskData(prev => ({ ...prev, task_description: e.target.value }))}
+                              className="w-full p-2 border border-gray-300 rounded-md"
                               rows={3}
-                              placeholder="Add your notes, questions, or updates for this task..."
                             />
-                          ) : (
-                            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg min-h-[60px]">
-                              {task.client_notes ? (
-                                <p className="text-sm text-gray-700">{task.client_notes}</p>
-                              ) : (
-                                <p className="text-sm text-gray-400 italic">No notes added yet</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="font-medium text-gray-900">{task.task_name}</h4>
+                              {isAdminView && (
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => startEditing(task)}
+                                    className="flex items-center px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                                  >
+                                    <Edit className="w-3 h-3 mr-1" />
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => deleteTask(task.id)}
+                                    className="flex items-center px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                                  >
+                                    <Trash2 className="w-3 h-3 mr-1" />
+                                    Delete
+                                  </button>
+                                </div>
                               )}
                             </div>
+                            {task.task_description && (
+                              <p className="text-sm text-gray-600 mb-2">{task.task_description}</p>
+                            )}
+                            
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(task.status)}`}>
+                                <span className="mr-1">{getStatusIcon(task.status)}</span>
+                                {task.status.replace('_', ' ')}
+                              </span>
+                              
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(task.priority)}`}>
+                                {task.priority}
+                              </span>
+                              
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getOwnerColor(task.task_owner)}`}>
+                                {task.task_owner}
+                              </span>
+                              
+                              {task.due_date && (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                  <Calendar className="w-3 h-3 mr-1" />
+                                  Due: {new Date(task.due_date).toLocaleDateString()}
+                                </span>
+                              )}
+                              
+                              {task.completed_at && (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Completed: {new Date(task.completed_at).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* Client Task Actions */}
+                            {(task.task_owner === 'CLIENT' || task.task_owner === 'BOTH') && !isAdminView && (
+                              <div className="ml-4 flex flex-col space-y-2">
+                                {task.status !== 'completed' ? (
+                                  <button
+                                    onClick={() => updateTaskStatus(task.id, 'completed')}
+                                    className="flex items-center px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+                                  >
+                                    <CheckCircle className="w-4 h-4 mr-1" />
+                                    Mark Complete
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => updateTaskStatus(task.id, 'in_progress')}
+                                    className="flex items-center px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                                  >
+                                    <Clock className="w-4 h-4 mr-1" />
+                                    Mark In Progress
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                           )}
+                          
+                          {/* Notes Section */}
+                          <div className="mt-4 border-t pt-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-sm font-medium text-gray-700">
+                                {isAdminView ? 'Client Notes' : 'Your Notes'}
+                              </label>
+                              {editingTask === task.id ? (
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => updateTaskNotes(task.id)}
+                                    className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingTask(null)}
+                                    className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setEditingTask(task.id)}
+                                  className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                                >
+                                  {task.client_notes ? 'Edit Notes' : 'Add Notes'}
+                                </button>
+                              )}
+                            </div>
+                            
+                            {editingTask === task.id ? (
+                              <textarea
+                                value={taskNotes[task.id] || ''}
+                                onChange={(e) => setTaskNotes({...taskNotes, [task.id]: e.target.value})}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                rows={3}
+                                placeholder="Add your notes, questions, or updates for this task..."
+                              />
+                            ) : (
+                              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg min-h-[60px]">
+                                {task.client_notes ? (
+                                  <p className="text-sm text-gray-700">{task.client_notes}</p>
+                                ) : (
+                                  <p className="text-sm text-gray-400 italic">No notes added yet</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
-                  </div>
-                ))}
-                
-                {groupedTasks[category]?.length === 0 && (
-                  <div className="text-center py-12">
-                    <Clock className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Tasks in This Phase</h3>
-                    <p className="text-gray-600">
-                      {isAdminView ? 'Click "Add Task" to create the first task in this phase.' : 'Tasks will appear here once they are assigned by your account manager.'}
-                    </p>
-                    {isAdminView && (
-                      <button
-                        onClick={() => addNewTask(category)}
-                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Add First Task
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Add Task Button for Admin (when category is expanded and has tasks) */}
-            {isAdminView && expandedCategories[category] && groupedTasks[category]?.length > 0 && (
-              <div className="p-4 border-t border-gray-200 bg-gray-50">
-                <button
-                  onClick={() => addNewTask(category)}
-                  className="w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all duration-300 group"
-                >
-                  <Plus className="text-gray-400 group-hover:text-blue-400 mr-2" size={16} />
-                  <span className="text-gray-600 group-hover:text-blue-400 font-medium">
-                    Add Another Task to {category}
-                  </span>
-                </button>
-              </div>
-            )}
-            
-            {/* Add Task Button for Admin (when category is expanded but has no tasks) */}
-            {isAdminView && expandedCategories[category] && (!groupedTasks[category] || groupedTasks[category]?.length === 0) && (
-              <div className="p-4 border-t border-gray-200 bg-gray-50">
-                <button
-                  onClick={() => addNewTask(category)}
-                  className="w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all duration-300 group"
-                >
-                  <Plus className="text-gray-400 group-hover:text-blue-400 mr-2" size={16} />
-                  <span className="text-gray-600 group-hover:text-blue-400 font-medium">
-                    Add First Task to {category}
-                  </span>
-                </button>
+                  ))}
+                  
+                  {/* Add Task Button */}
+                  {isAdminView && (
+                    <button
+                      onClick={() => addNewTask(category)}
+                      className="w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all duration-300 group"
+                    >
+                      <Plus className="text-gray-400 group-hover:text-blue-400 mr-2" size={16} />
+                      <span className="text-gray-600 group-hover:text-blue-400 font-medium">
+                        Add Task to {category}
+                      </span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
