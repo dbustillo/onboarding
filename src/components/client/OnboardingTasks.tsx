@@ -905,7 +905,7 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                             ) : (
                               <Clock className="w-5 h-5 text-blue-500 mr-2" />
                             )}
-                            {isAdminView ? (
+                            {isAdminView && editingTask === task.id ? (
                               <input
                                 type="text"
                                 value={editingTaskData[task.id]?.task_name || task.task_name}
@@ -924,13 +924,35 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                           {/* Admin Action Buttons */}
                           {isAdminView && (
                             <div className="flex items-center space-x-2 ml-4">
-                              <button
-                                onClick={() => updateTaskData(task.id)}
-                                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
-                                title="Save Changes"
-                              >
-                                Save
-                              </button>
+                              {editingTask === task.id ? (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      updateTaskData(task.id);
+                                      setEditingTask(null);
+                                    }}
+                                    className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+                                    title="Save Changes"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingTask(null)}
+                                    className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colors"
+                                    title="Cancel"
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => setEditingTask(task.id)}
+                                  className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                                  title="Edit Task"
+                                >
+                                  Edit
+                                </button>
+                              )}
                               <button
                                 onClick={() => deleteTask(task.id)}
                                 className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
@@ -944,7 +966,7 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                         
                         {/* Task Description */}
                         <div className="mb-4">
-                          {isAdminView ? (
+                          {isAdminView && editingTask === task.id ? (
                             <textarea
                               value={editingTaskData[task.id]?.task_description || task.task_description || ''}
                               onChange={(e) => setEditingTaskData(prev => ({
@@ -963,7 +985,7 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                         </div>
                         
                         {/* Admin Edit Controls */}
-                        {isAdminView && (
+                        {isAdminView && editingTask === task.id && (
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
@@ -1032,7 +1054,7 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                         </div>
 
                         {/* Date Management (Admin View Only) */}
-                        {isAdminView && (
+                        {isAdminView && editingTask === task.id && (
                           <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                             <h5 className="text-sm font-medium text-gray-700 mb-3">Date Management</h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1177,6 +1199,21 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                   <Plus className="text-gray-400 group-hover:text-blue-400 mr-2" size={16} />
                   <span className="text-gray-600 group-hover:text-blue-400 font-medium">
                     Add Another Task to {category}
+                  </span>
+                </button>
+              </div>
+            )}
+            
+            {/* Add Task Button for Admin (when category is expanded but has no tasks) */}
+            {isAdminView && expandedCategories[category] && (!groupedTasks[category] || groupedTasks[category]?.length === 0) && (
+              <div className="p-4 border-t border-gray-200 bg-gray-50">
+                <button
+                  onClick={() => addNewTask(category)}
+                  className="w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all duration-300 group"
+                >
+                  <Plus className="text-gray-400 group-hover:text-blue-400 mr-2" size={16} />
+                  <span className="text-gray-600 group-hover:text-blue-400 font-medium">
+                    Add First Task to {category}
                   </span>
                 </button>
               </div>
