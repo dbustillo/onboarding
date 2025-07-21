@@ -440,10 +440,20 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userId, onBack }) => {
                 <div>
                   <label className="text-sm font-medium text-gray-700">Started</label>
                   <p className="text-gray-900">
-          <OnboardingTasks 
-            clientId={userId} 
-            onboardingId={onboarding?.id || null} 
-          />
+                    {new Date(onboarding.started_at).toLocaleDateString()}
+                  </p>
+                </div>
+                {onboarding.estimated_completion && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Estimated Completion</label>
+                    <p className="text-gray-900">
+                      {new Date(onboarding.estimated_completion).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Quick Stats */}
           <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -683,14 +693,10 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userId, onBack }) => {
                       </span>
                       
                       {doc.is_signed && (
-                        <a
-                          href={doc.file_url}
-                          download={doc.file_name}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                          >
+                        <span className="inline-flex items-center text-green-600 text-sm">
                           <CheckCircle className="w-3 h-3 mr-1" />
                           Signed
-                          </a>
+                        </span>
                       )}
                       
                       <a
