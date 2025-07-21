@@ -826,244 +826,245 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                 <div className="space-y-4">
                   {groupedTasks[category]?.map(task => (
                     <div key={task.id} className="border rounded-lg p-4">
-                      {/* Admin Editing Interface */}
-                      {isAdminView && editingTask === task.id ? (
-                        <div className="space-y-4 bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-lg font-semibold text-blue-800">Editing Task</h4>
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => updateTask(task.id, editingTaskData)}
-                                disabled={saving}
-                                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                              >
-                                <Save className="w-4 h-4 mr-2" />
-                                {saving ? 'Saving...' : 'Save'}
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setEditingTask(null);
-                                  setEditingTaskData({});
-                                }}
-                                className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-                              >
-                                <X className="w-4 h-4 mr-2" />
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Task Name</label>
-                              <input
-                                type="text"
-                                value={editingTaskData.task_name || ''}
-                                onChange={(e) => setEditingTaskData(prev => ({ ...prev, task_name: e.target.value }))}
-                                className="w-full p-2 border border-gray-300 rounded-md"
-                              />
-                            </div>
-                            
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                              <select
-                                value={editingTaskData.priority || 'medium'}
-                                onChange={(e) => setEditingTaskData(prev => ({ ...prev, priority: e.target.value as any }))}
-                                className="w-full p-2 border border-gray-300 rounded-md"
-                              >
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                                <option value="critical">Critical</option>
-                              </select>
-                            </div>
-                            
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
-                              <select
-                                value={editingTaskData.task_owner || 'CLIENT'}
-                                onChange={(e) => setEditingTaskData(prev => ({ ...prev, task_owner: e.target.value as any }))}
-                                className="w-full p-2 border border-gray-300 rounded-md"
-                              >
-                                <option value="CLIENT">CLIENT</option>
-                                <option value="INSPIRE">INSPIRE</option>
-                                <option value="BOTH">BOTH</option>
-                              </select>
-                            </div>
-                            
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                              <select
-                                value={editingTaskData.status || 'not_started'}
-                                onChange={(e) => setEditingTaskData(prev => ({ ...prev, status: e.target.value as any }))}
-                                className="w-full p-2 border border-gray-300 rounded-md"
-                              >
-                                <option value="not_started">Not Started</option>
-                                <option value="in_progress">In Progress</option>
-                                <option value="waiting_client">Waiting Client</option>
-                                <option value="waiting_admin">Waiting Admin</option>
-                                <option value="completed">Completed</option>
-                                <option value="blocked">Blocked</option>
-                              </select>
-                            </div>
-                            
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Target Date</label>
-                              <input
-                                type="date"
-                                value={editingTaskData.due_date ? editingTaskData.due_date.split('T')[0] : ''}
-                                onChange={(e) => setEditingTaskData(prev => ({ 
-                                  ...prev, 
-                                  due_date: e.target.value ? new Date(e.target.value).toISOString() : null 
-                                }))}
-                                className="w-full p-2 border border-gray-300 rounded-md"
-                              />
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                            <textarea
-                              value={editingTaskData.task_description || ''}
-                              onChange={(e) => setEditingTaskData(prev => ({ ...prev, task_description: e.target.value }))}
-                              className="w-full p-2 border border-gray-300 rounded-md"
-                              rows={3}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <h4 className="font-medium text-gray-900">{task.task_name}</h4>
-                              {isAdminView && (
-                                <div className="flex space-x-2">
-                                  <button
-                                    onClick={() => startEditing(task)}
-                                    className="flex items-center px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                                  >
-                                    <Edit className="w-3 h-3 mr-1" />
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={() => deleteTask(task.id)}
-                                    className="flex items-center px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
-                                  >
-                                    <Trash2 className="w-3 h-3 mr-1" />
-                                    Delete
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                            {task.task_description && (
-                              <p className="text-sm text-gray-600 mb-2">{task.task_description}</p>
-                            )}
-                            
-                            <div className="flex flex-wrap gap-2 mb-2">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(task.status)}`}>
-                                <span className="mr-1">{getStatusIcon(task.status)}</span>
-                                {task.status.replace('_', ' ')}
-                              </span>
-                              
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(task.priority)}`}>
-                                {task.priority}
-                              </span>
-                              
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getOwnerColor(task.task_owner)}`}>
-                                {task.task_owner}
-                              </span>
-                              
-                              {task.due_date && (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                                  <Calendar className="w-3 h-3 mr-1" />
-                                  Due: {new Date(task.due_date).toLocaleDateString()}
-                                </span>
-                              )}
-                              
-                              {task.completed_at && (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                                  <CheckCircle className="w-3 h-3 mr-1" />
-                                  Completed: {new Date(task.completed_at).toLocaleDateString()}
-                                </span>
-                              )}
-                            </div>
-                            
-                            {/* Client Task Actions */}
-                            {(task.task_owner === 'CLIENT' || task.task_owner === 'BOTH') && !isAdminView && (
-                              <div className="ml-4 flex flex-col space-y-2">
-                                {task.status !== 'completed' ? (
-                                  <button
-                                    onClick={() => updateTaskStatus(task.id, 'completed')}
-                                    className="flex items-center px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
-                                  >
-                                    <CheckCircle className="w-4 h-4 mr-1" />
-                                    Mark Complete
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => updateTaskStatus(task.id, 'in_progress')}
-                                    className="flex items-center px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-                                  >
-                                    <Clock className="w-4 h-4 mr-1" />
-                                    Mark In Progress
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                          
-                          {/* Notes Section */}
-                          <div className="mt-4 border-t pt-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <label className="text-sm font-medium text-gray-700">
-                                {isAdminView ? 'Client Notes' : 'Your Notes'}
-                              </label>
-                              {editingTask === task.id ? (
-                                <div className="flex space-x-2">
-                                  <button
-                                    onClick={() => updateTaskNotes(task.id)}
-                                    className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                  >
-                                    Save
-                                  </button>
-                                  <button
-                                    onClick={() => setEditingTask(null)}
-                                    className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              ) : (
+                      <>
+                        {/* Admin Editing Interface */}
+                        {isAdminView && editingTask === task.id ? (
+                          <div className="space-y-4 bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <h4 className="text-lg font-semibold text-blue-800">Editing Task</h4>
+                              <div className="flex space-x-2">
                                 <button
-                                  onClick={() => setEditingTask(task.id)}
-                                  className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                                  onClick={() => updateTask(task.id, editingTaskData)}
+                                  disabled={saving}
+                                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                                 >
-                                  {task.client_notes ? 'Edit Notes' : 'Add Notes'}
+                                  <Save className="w-4 h-4 mr-2" />
+                                  {saving ? 'Saving...' : 'Save'}
                                 </button>
-                              )}
+                                <button
+                                  onClick={() => {
+                                    setEditingTask(null);
+                                    setEditingTaskData({});
+                                  }}
+                                  className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                                >
+                                  <X className="w-4 h-4 mr-2" />
+                                  Cancel
+                                </button>
+                              </div>
                             </div>
                             
-                            {editingTask === task.id ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Task Name</label>
+                                <input
+                                  type="text"
+                                  value={editingTaskData.task_name || ''}
+                                  onChange={(e) => setEditingTaskData(prev => ({ ...prev, task_name: e.target.value }))}
+                                  className="w-full p-2 border border-gray-300 rounded-md"
+                                />
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                                <select
+                                  value={editingTaskData.priority || 'medium'}
+                                  onChange={(e) => setEditingTaskData(prev => ({ ...prev, priority: e.target.value as any }))}
+                                  className="w-full p-2 border border-gray-300 rounded-md"
+                                >
+                                  <option value="low">Low</option>
+                                  <option value="medium">Medium</option>
+                                  <option value="high">High</option>
+                                  <option value="critical">Critical</option>
+                                </select>
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
+                                <select
+                                  value={editingTaskData.task_owner || 'CLIENT'}
+                                  onChange={(e) => setEditingTaskData(prev => ({ ...prev, task_owner: e.target.value as any }))}
+                                  className="w-full p-2 border border-gray-300 rounded-md"
+                                >
+                                  <option value="CLIENT">CLIENT</option>
+                                  <option value="INSPIRE">INSPIRE</option>
+                                  <option value="BOTH">BOTH</option>
+                                </select>
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                <select
+                                  value={editingTaskData.status || 'not_started'}
+                                  onChange={(e) => setEditingTaskData(prev => ({ ...prev, status: e.target.value as any }))}
+                                  className="w-full p-2 border border-gray-300 rounded-md"
+                                >
+                                  <option value="not_started">Not Started</option>
+                                  <option value="in_progress">In Progress</option>
+                                  <option value="waiting_client">Waiting Client</option>
+                                  <option value="waiting_admin">Waiting Admin</option>
+                                  <option value="completed">Completed</option>
+                                  <option value="blocked">Blocked</option>
+                                </select>
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Target Date</label>
+                                <input
+                                  type="date"
+                                  value={editingTaskData.due_date ? editingTaskData.due_date.split('T')[0] : ''}
+                                  onChange={(e) => setEditingTaskData(prev => ({ 
+                                    ...prev, 
+                                    due_date: e.target.value ? new Date(e.target.value).toISOString() : null 
+                                  }))}
+                                  className="w-full p-2 border border-gray-300 rounded-md"
+                                />
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                               <textarea
-                                value={taskNotes[task.id] || ''}
-                                onChange={(e) => setTaskNotes({...taskNotes, [task.id]: e.target.value})}
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                value={editingTaskData.task_description || ''}
+                                onChange={(e) => setEditingTaskData(prev => ({ ...prev, task_description: e.target.value }))}
+                                className="w-full p-2 border border-gray-300 rounded-md"
                                 rows={3}
-                                placeholder="Add your notes, questions, or updates for this task..."
                               />
-                            ) : (
-                              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg min-h-[60px]">
-                                {task.client_notes ? (
-                                  <p className="text-sm text-gray-700">{task.client_notes}</p>
-                                ) : (
-                                  <p className="text-sm text-gray-400 italic">No notes added yet</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <h4 className="font-medium text-gray-900">{task.task_name}</h4>
+                                {isAdminView && (
+                                  <div className="flex space-x-2">
+                                    <button
+                                      onClick={() => startEditing(task)}
+                                      className="flex items-center px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                                    >
+                                      <Edit className="w-3 h-3 mr-1" />
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={() => deleteTask(task.id)}
+                                      className="flex items-center px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                                    >
+                                      <Trash2 className="w-3 h-3 mr-1" />
+                                      Delete
+                                    </button>
+                                  </div>
                                 )}
                               </div>
+                              {task.task_description && (
+                                <p className="text-sm text-gray-600 mb-2">{task.task_description}</p>
+                              )}
+                              
+                              <div className="flex flex-wrap gap-2 mb-2">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(task.status)}`}>
+                                  <span className="mr-1">{getStatusIcon(task.status)}</span>
+                                  {task.status.replace('_', ' ')}
+                                </span>
+                                
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(task.priority)}`}>
+                                  {task.priority}
+                                </span>
+                                
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getOwnerColor(task.task_owner)}`}>
+                                  {task.task_owner}
+                                </span>
+                                
+                                {task.due_date && (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                    <Calendar className="w-3 h-3 mr-1" />
+                                    Due: {new Date(task.due_date).toLocaleDateString()}
+                                  </span>
+                                )}
+                                
+                                {task.completed_at && (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    Completed: {new Date(task.completed_at).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* Client Task Actions */}
+                              {(task.task_owner === 'CLIENT' || task.task_owner === 'BOTH') && !isAdminView && (
+                                <div className="ml-4 flex flex-col space-y-2">
+                                  {task.status !== 'completed' ? (
+                                    <button
+                                      onClick={() => updateTaskStatus(task.id, 'completed')}
+                                      className="flex items-center px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+                                    >
+                                      <CheckCircle className="w-4 h-4 mr-1" />
+                                      Mark Complete
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => updateTaskStatus(task.id, 'in_progress')}
+                                      className="flex items-center px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                                    >
+                                      <Clock className="w-4 h-4 mr-1" />
+                                      Mark In Progress
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                            
+                        {/* Notes Section */}
+                        <div className="mt-4 border-t pt-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm font-medium text-gray-700">
+                              {isAdminView ? 'Client Notes' : 'Your Notes'}
+                            </label>
+                            {editingTask === task.id ? (
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => updateTaskNotes(task.id)}
+                                  className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => setEditingTask(null)}
+                                  className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setEditingTask(task.id)}
+                                className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                              >
+                                {task.client_notes ? 'Edit Notes' : 'Add Notes'}
+                              </button>
                             )}
                           </div>
+                          
+                          {editingTask === task.id ? (
+                            <textarea
+                              value={taskNotes[task.id] || ''}
+                              onChange={(e) => setTaskNotes({...taskNotes, [task.id]: e.target.value})}
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                              rows={3}
+                              placeholder="Add your notes, questions, or updates for this task..."
+                            />
+                          ) : (
+                            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg min-h-[60px]">
+                              {task.client_notes ? (
+                                <p className="text-sm text-gray-700">{task.client_notes}</p>
+                              ) : (
+                                <p className="text-sm text-gray-400 italic">No notes added yet</p>
+                              )}
+                            </div>
+                          )}
                         </div>
+                      </>
                       )}
                     </div>
                   ))}
