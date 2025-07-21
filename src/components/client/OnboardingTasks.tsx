@@ -538,21 +538,18 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
       const categoryTasks = tasks.filter(t => t.category === category);
       const maxSortOrder = Math.max(...categoryTasks.map(t => t.sort_order), -1);
       
-      const { data, error } = await supabase
-        .from('onboarding_tasks')
-        .insert({
-          onboarding_id: onboardingId,
-          category,
-          task_name: 'New Task',
-          task_description: 'Task description',
-          task_owner: 'CLIENT',
-          status: 'not_started',
-          priority: 'medium',
-          sort_order: maxSortOrder + 1,
-          metadata: {}
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('admin_add_onboarding_task', {
+        p_onboarding_id: onboardingId,
+        p_category: category,
+        p_task_name: 'New Task',
+        p_task_description: 'Task description',
+        p_task_owner: 'CLIENT',
+        p_status: 'not_started',
+        p_priority: 'medium',
+        p_sort_order: maxSortOrder + 1,
+        p_due_date: null,
+        p_metadata: {}
+      });
 
       if (error) throw error;
       
