@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, User, Building, Mail, Phone, Calendar, Upload, Download, CheckCircle, Clock, MessageSquare, FileText, Target, AlertCircle, Plus, Edit, Save, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase, Profile } from '../../lib/supabase';
 import { DocumentUpload } from './DocumentUpload';
-import OnboardingTasks from '../client/OnboardingTasks';
+import { AdminTaskManager } from './AdminTaskManager';
 
 interface UserProfileProps {
   userId: string;
