@@ -540,18 +540,22 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
       const categoryTasks = tasks.filter(t => t.category === category);
       const maxSortOrder = Math.max(...categoryTasks.map(t => t.sort_order), -1);
       
-      // Use the admin function to add the task
+      // Direct insert with proper data structure
       const { data, error } = await supabase
-        .rpc('admin_add_task', {
-          p_onboarding_id: onboardingId,
-          p_category: category,
-          p_task_name: 'New Task',
-          p_task_description: 'Task description',
-          p_task_owner: 'CLIENT',
-          p_priority: 'medium',
-          p_sort_order: maxSortOrder + 1
-        });
-
+        .from('onboarding_tasks')
+        .insert({
+          onboarding_id: onboardingId,
+          category: category,
+          task_name: 'New Task',
+          task_description: 'Task description',
+          task_owner: 'CLIENT',
+          priority: 'medium',
+          status: 'not_started',
+          sort_order: maxSortOrder + 1,
+          metadata: {}
+        })
+        .select()
+        .single();
       if (error) throw error;
       
       console.log('Task added successfully:', data);
