@@ -440,20 +440,10 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userId, onBack }) => {
                 <div>
                   <label className="text-sm font-medium text-gray-700">Started</label>
                   <p className="text-gray-900">
-                    {new Date(onboarding.started_at).toLocaleDateString()}
-                  </p>
-                </div>
-                {onboarding.estimated_completion && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">Estimated Completion</label>
-                    <p className="text-gray-900">
-                      {new Date(onboarding.estimated_completion).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          <OnboardingTasks 
+            clientId={userId} 
+            onboardingId={onboarding?.id || null} 
+          />
 
           {/* Quick Stats */}
           <div className="bg-white rounded-lg shadow-sm border p-6">

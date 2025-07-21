@@ -66,13 +66,16 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
   });
 
   useEffect(() => {
-    if (onboardingId) {
-      fetchTasks();
-    }
+    fetchTasks();
   }, [onboardingId]);
 
   const fetchTasks = async () => {
-    if (!onboardingId) return;
+    if (!onboardingId) {
+      console.log('No onboarding ID provided, showing empty state');
+      setTasks([]);
+      setLoading(false);
+      return;
+    }
     
     console.log('Fetching tasks for onboarding ID:', onboardingId);
     try {
@@ -209,15 +212,65 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
 
   if (!onboardingId || tasks.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6 text-center">
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="bg-yellow-100 p-4 rounded-full mb-4">
-            <AlertCircle className="w-12 h-12 text-yellow-500" />
+      <div className="space-y-6">
+        {/* Show the same category structure as when tasks exist, but empty */}
+        {[
+          'Pre-Onboarding',
+          'Tech & Integrations', 
+          'Inventory & Inbounding',
+          'Pilot Run & User Acceptance Testing',
+          'GO LIVE'
+        ].map(category => (
+          <div key={category} className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="p-2 rounded-lg bg-white shadow-sm mr-3">
+                    {category.toLowerCase().includes('pre-onboarding') && <CheckSquare className="w-5 h-5" />}
+                    {(category.toLowerCase().includes('tech') || category.toLowerCase().includes('integration')) && <Building className="w-5 h-5" />}
+                    {category.toLowerCase().includes('inventory') && <Building className="w-5 h-5" />}
+                    {category.toLowerCase().includes('pilot') && <Target className="w-5 h-5" />}
+                    {category.toLowerCase().includes('go live') && <ArrowRight className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">{category}</h3>
+                    <div className="flex items-center mt-1">
+                      <div className="w-32 bg-gray-200 rounded-full h-2.5 mr-2">
+                        <div className="bg-gray-300 h-2.5 rounded-full" style={{ width: '0%' }}></div>
+                      </div>
+                      <span className="text-sm text-gray-600">0% Complete</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <span className="text-sm font-medium text-gray-600 mr-3">0 / 0 Tasks</span>
+                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                </div>
+              </div>
+            </div>
+            <div className="p-6 text-center text-gray-500">
+              <AlertCircle className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+              <p className="text-sm">No tasks assigned yet for this phase</p>
+              {!onboardingId && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Create an onboarding process to add tasks
+                </p>
+              )}
+            </div>
           </div>
-          <h3 className="text-xl font-medium text-gray-900 mb-2">No Onboarding Tasks</h3>
-          <p className="text-gray-600 max-w-md mx-auto">
-            There are no onboarding tasks assigned yet. Please contact your account manager for assistance.
-          </p>
+        ))}
+        
+        {!onboardingId && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
+            <div className="flex items-center justify-center mb-4">
+              <AlertCircle className="w-8 h-8 text-blue-600 mr-2" />
+              <h3 className="text-lg font-medium text-blue-800">No Onboarding Process</h3>
+            </div>
+            <p className="text-blue-700 mb-4">
+              This client doesn't have an active onboarding process yet. Create one to start managing their tasks.
+            </p>
+          </div>
+        )}
         </div>
       </div>
     );
