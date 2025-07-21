@@ -141,7 +141,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userId, onBack }) => {
           .from('client_onboarding')
           .select('*')
           .eq('client_id', userId)
-          .single();
+          .maybeSingle();
 
         if (!onboardingError && onboardingData) {
           setOnboarding(onboardingData);
