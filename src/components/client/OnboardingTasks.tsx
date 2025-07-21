@@ -4,7 +4,7 @@ import {
   CheckCircle, 
   Clock, AlertCircle, ChevronDown, ChevronUp, MessageSquare, 
   CheckSquare, Calendar, User, Building, ArrowRight,
-  Target, FileText, Loader2
+  Target, FileText, Loader2, Edit, Save, X
 } from 'lucide-react';
 
 interface Task {
@@ -26,9 +26,297 @@ interface Task {
 interface OnboardingTasksProps {
   clientId: string;
   onboardingId: string | null;
+  isAdminView?: boolean;
 }
 
-const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingId }) => {
+// Default task structure based on your screenshots
+const DEFAULT_TASK_STRUCTURE = {
+  'Pre-Onboarding': [
+    {
+      name: 'Client Service Requirements',
+      description: 'Define and document client service requirements and expectations',
+      targetDate: '2025-Jun-27',
+      priority: 'high',
+      owner: 'CLIENT'
+    },
+    {
+      name: 'SLA & Pricing Sign-off',
+      description: 'Review and approve Service Level Agreement and pricing structure',
+      targetDate: '2025-Jul-02',
+      priority: 'critical',
+      owner: 'BOTH'
+    },
+    {
+      name: 'Primary and secondary contacts (Sales, Tech, Ops)',
+      description: 'Identify primary and secondary contact persons for ongoing communication',
+      targetDate: '',
+      priority: 'high',
+      owner: 'CLIENT'
+    },
+    {
+      name: 'Internal point persons (CS, WMS, Fulfillment, Onboarding Lead)',
+      description: 'Assign internal team members for different aspects of onboarding',
+      targetDate: '',
+      priority: 'high',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Contact channels or chat groups created (Viber or Whatsapp)',
+      description: 'Set up communication channels for ongoing collaboration',
+      targetDate: '',
+      priority: 'medium',
+      owner: 'BOTH'
+    },
+    {
+      name: 'Client logo (for branding needs)',
+      description: 'Obtain client logo and branding materials',
+      targetDate: '2025-Jul-01',
+      priority: 'medium',
+      owner: 'CLIENT'
+    },
+    {
+      name: 'Escalation protocol (key persons for issues or concerns)',
+      description: 'Define escalation procedures and key contacts',
+      targetDate: '',
+      priority: 'medium',
+      owner: 'BOTH'
+    },
+    {
+      name: 'Raw export of product file from current provider',
+      description: 'For product data matching by Inspire team, to avoid issues during marketplace integration',
+      targetDate: 'N/A',
+      priority: 'medium',
+      owner: 'CLIENT'
+    },
+    {
+      name: 'Product Classification: Fast-moving / Average / Slow-moving',
+      description: 'Categorize products for optimal warehouse management',
+      targetDate: '',
+      priority: 'medium',
+      owner: 'CLIENT'
+    },
+    {
+      name: 'Packaging specs provided (sample video, if available)',
+      description: 'Provide packaging requirements and specifications',
+      targetDate: '',
+      priority: 'medium',
+      owner: 'CLIENT'
+    },
+    {
+      name: 'Marketplace user access shared with Inspire Team for system integration',
+      description: 'Grant access for marketplace integration setup',
+      targetDate: '2025-Jul-02',
+      priority: 'high',
+      owner: 'CLIENT'
+    },
+    {
+      name: 'Sandbox system access (to be provided by Inspire)',
+      description: 'Provide testing environment access',
+      targetDate: '',
+      priority: 'medium',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Client Data Room access (Google Drive document storage)',
+      description: 'Set up secure document sharing environment',
+      targetDate: '',
+      priority: 'medium',
+      owner: 'INSPIRE'
+    }
+  ],
+  'Tech & Integrations': [
+    {
+      name: 'Lazada, Shopee, TikTok Shop, Shopify, etc. connected',
+      description: 'Connect all marketplace and e-commerce platforms',
+      targetDate: '',
+      priority: 'critical',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'API keys or plugin access granted (Shopify only)',
+      description: 'Provide necessary API access for Shopify integration',
+      targetDate: '',
+      priority: 'high',
+      owner: 'CLIENT'
+    },
+    {
+      name: 'Channel-specific mapping validated',
+      description: 'Validate product mapping across all channels',
+      targetDate: '',
+      priority: 'high',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Marketplace Integration testing',
+      description: 'Test all marketplace integrations thoroughly',
+      targetDate: '',
+      priority: 'high',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Live order testing with warehouse team',
+      description: 'Conduct end-to-end order testing',
+      targetDate: '',
+      priority: 'critical',
+      owner: 'BOTH'
+    }
+  ],
+  'Inventory & Inbounding': [
+    {
+      name: 'Product transfer scheduled (ASN created by the Client)',
+      description: 'Schedule and create Advanced Shipping Notice for product transfer',
+      targetDate: '2025-Jul-05',
+      priority: 'critical',
+      owner: 'CLIENT'
+    },
+    {
+      name: 'Warehouse receiving orders created in WMS (ASN received by Inspire Team)',
+      description: 'Process receiving orders in Warehouse Management System',
+      targetDate: '2025-Jul-09',
+      priority: 'critical',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Product Inspection & Verification (QA by Inspire Team)',
+      description: 'Conduct quality assurance and product verification',
+      targetDate: '2025-Jul-09',
+      priority: 'high',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Physical receiving completed (by Inspire Team)',
+      description: 'Complete physical receipt and documentation',
+      targetDate: '2025-Jul-09',
+      priority: 'critical',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'QA completed (quantity, damage, labeling) (by Inspire Team)',
+      description: 'Complete quality assurance checks',
+      targetDate: '2025-Jul-09',
+      priority: 'high',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Products mapped to correct put-away zones (by Inspire Team)',
+      description: 'Map products to appropriate warehouse zones',
+      targetDate: '2025-Jul-09',
+      priority: 'medium',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Stock put-away logged in system (by Inspire Team)',
+      description: 'Log all inventory in warehouse management system',
+      targetDate: '2025-Jul-09',
+      priority: 'high',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Initial picking and packing process defined (by Inspire Team)',
+      description: 'Establish picking and packing procedures',
+      targetDate: '2025-Jul-09',
+      priority: 'high',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Packaging materials prepared (SKUs needing boxes, fillers, etc.) (by Inspire Team)',
+      description: 'Prepare all necessary packaging materials',
+      targetDate: '2025-Jul-09',
+      priority: 'medium',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Returns intake process agreed (restocking vs disposal)',
+      description: 'Define returns handling procedures',
+      targetDate: '',
+      priority: 'medium',
+      owner: 'BOTH'
+    }
+  ],
+  'Pilot Run & User Acceptance Testing': [
+    {
+      name: 'Simulate small batch orders from each marketplace',
+      description: 'Test order processing with small batches',
+      targetDate: '2025-Jul-09',
+      priority: 'critical',
+      owner: 'BOTH'
+    },
+    {
+      name: 'Cross-functional observation (CS, WH, Tech, Client)',
+      description: 'Conduct comprehensive testing with all stakeholders',
+      targetDate: '2025-Jul-09',
+      priority: 'high',
+      owner: 'BOTH'
+    },
+    {
+      name: 'Notes on gaps or improvement opportunities',
+      description: 'Document any issues or optimization opportunities',
+      targetDate: '2025-Jul-09',
+      priority: 'medium',
+      owner: 'BOTH'
+    },
+    {
+      name: 'Sign-off from client team post-pilot',
+      description: 'Obtain client approval after pilot testing',
+      targetDate: '2025-Jul-09',
+      priority: 'critical',
+      owner: 'CLIENT'
+    },
+    {
+      name: 'Internal validation: Ops, WH, Tech (by Inspire Team)',
+      description: 'Internal team validation and sign-off',
+      targetDate: '2025-Jul-09',
+      priority: 'high',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Final tweaks to workflow or system settings',
+      description: 'Make final adjustments based on pilot results',
+      targetDate: '2025-Jul-09',
+      priority: 'medium',
+      owner: 'INSPIRE'
+    }
+  ],
+  'GO LIVE': [
+    {
+      name: 'Go-live date confirmed and communicated',
+      description: 'Finalize and communicate the go-live date',
+      targetDate: '',
+      priority: 'critical',
+      owner: 'BOTH'
+    },
+    {
+      name: 'All systems activated for live operations',
+      description: 'Activate all systems for production use',
+      targetDate: '',
+      priority: 'critical',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Monitoring and support protocols activated',
+      description: 'Begin active monitoring and support',
+      targetDate: '',
+      priority: 'high',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Client training completed',
+      description: 'Complete all necessary client training',
+      targetDate: '',
+      priority: 'high',
+      owner: 'INSPIRE'
+    },
+    {
+      name: 'Post go-live review scheduled',
+      description: 'Schedule follow-up review meeting',
+      targetDate: '',
+      priority: 'medium',
+      owner: 'BOTH'
+    }
+  ]
+};
+
+const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingId, isAdminView = false }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
@@ -36,6 +324,7 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState<string>('');
   const [editingTask, setEditingTask] = useState<string | null>(null);
+  const [editingDates, setEditingDates] = useState<Record<string, { target: string; actual: string }>>({});
 
   // Group tasks by category
   const groupedTasks = tasks.reduce((acc, task) => {
@@ -50,36 +339,43 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
   // Order categories based on the onboarding flow
   const categoryOrder = [
     'Pre-Onboarding',
-    'Tech & Marketplace Integration',
     'Tech & Integrations', 
     'Inventory & Inbounding',
-    'Inventory & Inbounding',
-    'Pilot Run & User Acceptance (UAT)',
     'Pilot Run & User Acceptance Testing',
     'GO LIVE'
   ];
 
-  const sortedCategories = Object.keys(groupedTasks).sort((a, b) => {
-    const indexA = categoryOrder.findIndex(cat => a.includes(cat) || cat.includes(a));
-    const indexB = categoryOrder.findIndex(cat => b.includes(cat) || cat.includes(b));
-    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
-  });
+  const sortedCategories = Object.keys(groupedTasks).length > 0 
+    ? Object.keys(groupedTasks).sort((a, b) => {
+        const indexA = categoryOrder.findIndex(cat => a.includes(cat) || cat.includes(a));
+        const indexB = categoryOrder.findIndex(cat => b.includes(cat) || cat.includes(b));
+        return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+      })
+    : categoryOrder;
 
   useEffect(() => {
     fetchTasks();
   }, [onboardingId]);
 
   const fetchTasks = async () => {
-    if (!onboardingId) {
-      console.log('No onboarding ID provided, showing empty state');
-      setTasks([]);
-      setLoading(false);
-      return;
-    }
-    
     console.log('Fetching tasks for onboarding ID:', onboardingId);
     try {
       setLoading(true);
+      
+      if (!onboardingId) {
+        console.log('No onboarding ID provided, showing default structure');
+        setTasks([]);
+        
+        // Initialize expanded categories for default structure
+        const initialExpandedCategories: Record<string, boolean> = {};
+        categoryOrder.forEach((category, index) => {
+          initialExpandedCategories[category] = index === 0;
+        });
+        setExpandedCategories(initialExpandedCategories);
+        setLoading(false);
+        return;
+      }
+      
       const { data, error } = await supabase
         .from('onboarding_tasks')
         .select('*')
@@ -92,28 +388,70 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
       
       // Initialize task notes from existing client notes
       const initialNotes: Record<string, string> = {};
+      const initialDates: Record<string, { target: string; actual: string }> = {};
       data?.forEach(task => {
         if (task.client_notes) {
           initialNotes[task.id] = task.client_notes;
         } else {
           initialNotes[task.id] = '';
         }
+        
+        // Initialize date editing state
+        initialDates[task.id] = {
+          target: task.due_date ? task.due_date.split('T')[0] : '',
+          actual: task.completed_at ? task.completed_at.split('T')[0] : ''
+        };
       });
       setTaskNotes(initialNotes);
+      setEditingDates(initialDates);
       
       // Initialize expanded categories
       const initialExpandedCategories: Record<string, boolean> = {};
       const uniqueCategories = [...new Set(data?.map(task => task.category) || [])];
       uniqueCategories.forEach((category, index) => {
-        // Expand the first category by default
         initialExpandedCategories[category] = index === 0;
-        console.log('Setting category expanded state:', category, index === 0);
       });
       setExpandedCategories(initialExpandedCategories);
     } catch (error) {
       console.error('Error fetching tasks:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateTaskStatus = async (taskId: string, newStatus: 'completed' | 'in_progress' | 'not_started') => {
+    try {
+      const { error } = await supabase
+        .from('onboarding_tasks')
+        .update({ 
+          status: newStatus,
+          completed_at: newStatus === 'completed' ? new Date().toISOString() : null
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      // Update local state
+      setTasks(prev => 
+        prev.map(task => 
+          task.id === taskId 
+            ? { 
+                ...task, 
+                status: newStatus,
+                completed_at: newStatus === 'completed' ? new Date().toISOString() : null
+              }
+            : task
+        )
+      );
+      
+      setToastMessage(`Task marked as ${newStatus === 'completed' ? 'complete' : newStatus.replace('_', ' ')}`);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      setToastMessage('Failed to update task status');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
     }
   };
 
@@ -133,6 +471,43 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
     } catch (error) {
       console.error('Error updating task notes:', error);
       setToastMessage('Failed to update notes');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    }
+  };
+
+  const updateTaskDates = async (taskId: string) => {
+    try {
+      const dates = editingDates[taskId];
+      const { error } = await supabase
+        .from('onboarding_tasks')
+        .update({ 
+          due_date: dates.target ? new Date(dates.target).toISOString() : null,
+          completed_at: dates.actual ? new Date(dates.actual).toISOString() : null
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      // Update local state
+      setTasks(prev => 
+        prev.map(task => 
+          task.id === taskId 
+            ? { 
+                ...task, 
+                due_date: dates.target ? new Date(dates.target).toISOString() : null,
+                completed_at: dates.actual ? new Date(dates.actual).toISOString() : null
+              }
+            : task
+        )
+      );
+      
+      setToastMessage('Dates updated successfully');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (error) {
+      console.error('Error updating task dates:', error);
+      setToastMessage('Failed to update dates');
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
     }
@@ -210,28 +585,23 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
     );
   }
 
+  // Show default structure when no onboarding exists or no tasks
   if (!onboardingId || tasks.length === 0) {
     return (
-      <>
       <div className="space-y-6">
-        {/* Show the same category structure as when tasks exist, but empty */}
-        {[
-          'Pre-Onboarding',
-          'Tech & Integrations', 
-          'Inventory & Inbounding',
-          'Pilot Run & User Acceptance Testing',
-          'GO LIVE'
-        ].map(category => (
-          <div key={category} className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-              <div className="flex items-center justify-between">
+        {categoryOrder.map(category => {
+          const defaultTasks = DEFAULT_TASK_STRUCTURE[category as keyof typeof DEFAULT_TASK_STRUCTURE] || [];
+          const isExpanded = expandedCategories[category] || false;
+          
+          return (
+            <div key={category} className="bg-white rounded-lg shadow overflow-hidden">
+              <button
+                onClick={() => toggleCategory(category)}
+                className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-colors border-b border-gray-200"
+              >
                 <div className="flex items-center">
                   <div className="p-2 rounded-lg bg-white shadow-sm mr-3">
-                    {category.toLowerCase().includes('pre-onboarding') && <CheckSquare className="w-5 h-5" />}
-                    {(category.toLowerCase().includes('tech') || category.toLowerCase().includes('integration')) && <Building className="w-5 h-5" />}
-                    {category.toLowerCase().includes('inventory') && <Building className="w-5 h-5" />}
-                    {category.toLowerCase().includes('pilot') && <Target className="w-5 h-5" />}
-                    {category.toLowerCase().includes('go live') && <ArrowRight className="w-5 h-5" />}
+                    {getCategoryIcon(category)}
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">{category}</h3>
@@ -244,22 +614,69 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                   </div>
                 </div>
                 <div className="flex items-center">
-                  <span className="text-sm font-medium text-gray-600 mr-3">0 / 0 Tasks</span>
-                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-600 mr-3">
+                    0 / {defaultTasks.length} Tasks
+                  </span>
+                  {isExpanded ? (
+                    <ChevronUp className="w-5 h-5 text-gray-500" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gray-500" />
+                  )}
                 </div>
-              </div>
-            </div>
-            <div className="p-6 text-center text-gray-500">
-              <AlertCircle className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-              <p className="text-sm">No tasks assigned yet for this phase</p>
-              {!onboardingId && (
-                <p className="text-xs text-gray-400 mt-1">
-                  Create an onboarding process to add tasks
-                </p>
+              </button>
+              
+              {isExpanded && (
+                <div className="divide-y divide-gray-200">
+                  {defaultTasks.map((task, index) => (
+                    <div key={index} className="p-6 bg-gray-50">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center mb-2">
+                            <Clock className="w-5 h-5 text-gray-400 mr-2" />
+                            <h4 className="text-lg font-medium text-gray-700">{task.name}</h4>
+                          </div>
+                          
+                          {task.description && (
+                            <p className="text-gray-600 mb-3">{task.description}</p>
+                          )}
+                          
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 border-gray-200">
+                              <Clock className="w-3 h-3 mr-1" />
+                              Not Started
+                            </span>
+                            
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(task.priority)}`}>
+                              {task.priority}
+                            </span>
+                            
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getOwnerColor(task.owner)}`}>
+                              {task.owner}
+                            </span>
+                            
+                            {task.targetDate && task.targetDate !== 'N/A' && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                <Calendar className="w-3 h-3 mr-1" />
+                                Target: {task.targetDate}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="mt-4">
+                            <div className="text-sm font-medium text-gray-700 mb-2">Notes:</div>
+                            <div className="p-3 bg-white border border-gray-200 rounded-lg min-h-[60px]">
+                              <p className="text-sm text-gray-400 italic">No notes added yet</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
         
         {!onboardingId && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
@@ -272,8 +689,7 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
             </p>
           </div>
         )}
-        </div>
-      </>
+      </div>
     );
   }
 
@@ -353,17 +769,70 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getOwnerColor(task.task_owner)}`}>
                             {task.task_owner}
                           </span>
-                          
-                          {task.due_date && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
-                              <Calendar className="w-3 h-3 mr-1" />
-                              Due: {new Date(task.due_date).toLocaleDateString()}
-                            </span>
-                          )}
                         </div>
+
+                        {/* Date Management (Admin View Only) */}
+                        {isAdminView && (
+                          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  Target Date
+                                </label>
+                                <input
+                                  type="date"
+                                  value={editingDates[task.id]?.target || ''}
+                                  onChange={(e) => setEditingDates(prev => ({
+                                    ...prev,
+                                    [task.id]: { ...prev[task.id], target: e.target.value }
+                                  }))}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  Actual Date
+                                </label>
+                                <input
+                                  type="date"
+                                  value={editingDates[task.id]?.actual || ''}
+                                  onChange={(e) => setEditingDates(prev => ({
+                                    ...prev,
+                                    [task.id]: { ...prev[task.id], actual: e.target.value }
+                                  }))}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                />
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => updateTaskDates(task.id)}
+                              className="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                            >
+                              Update Dates
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Display dates for client view */}
+                        {!isAdminView && (task.due_date || task.completed_at) && (
+                          <div className="mb-3 flex flex-wrap gap-2">
+                            {task.due_date && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                <Calendar className="w-3 h-3 mr-1" />
+                                Target: {new Date(task.due_date).toLocaleDateString()}
+                              </span>
+                            )}
+                            {task.completed_at && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Completed: {new Date(task.completed_at).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         
-                        {/* Admin Notes */}
-                        {task.admin_notes && (
+                        {/* Admin Notes (Admin View Only) */}
+                        {isAdminView && task.admin_notes && (
                           <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
                             <div className="flex items-center mb-1">
                               <Building className="w-4 h-4 text-purple-600 mr-1" />
@@ -378,7 +847,7 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                           <div className="flex items-center justify-between mb-2">
                             <label className="text-sm font-medium text-gray-700 flex items-center">
                               <MessageSquare className="w-4 h-4 text-blue-600 mr-1" />
-                              Your Notes:
+                              {isAdminView ? 'Client Notes:' : 'Your Notes:'}
                             </label>
                             {editingTask === task.id ? (
                               <div className="flex space-x-2">
@@ -423,6 +892,33 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                             </div>
                           )}
                         </div>
+
+                        {/* Task Actions (Admin View Only) */}
+                        {isAdminView && (
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <button
+                              onClick={() => updateTaskStatus(task.id, 'completed')}
+                              disabled={task.status === 'completed'}
+                              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Mark Complete
+                            </button>
+                            <button
+                              onClick={() => updateTaskStatus(task.id, 'in_progress')}
+                              disabled={task.status === 'in_progress'}
+                              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Mark In Progress
+                            </button>
+                            <button
+                              onClick={() => updateTaskStatus(task.id, 'not_started')}
+                              disabled={task.status === 'not_started'}
+                              className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Reset
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

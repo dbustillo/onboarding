@@ -622,20 +622,11 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userId, onBack }) => {
               </div>
             </div>
             
-            {onboarding ? (
-              <OnboardingTasks 
-                clientId={userId} 
-                onboardingId={onboarding.id} 
-              />
-            ) : (
-              <div className="bg-white rounded-lg shadow-sm border p-6 text-center">
-                <AlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Onboarding Found</h3>
-                <p className="text-gray-600">
-                  This client doesn't have an active onboarding process yet.
-                </p>
-              </div>
-            )}
+            <OnboardingTasks 
+              clientId={userId} 
+              onboardingId={onboarding?.id || null} 
+              isAdminView={true}
+            />
           </div>
         )}
 
