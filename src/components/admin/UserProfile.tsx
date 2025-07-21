@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, User, Building, Mail, Phone, Calendar, Upload, Download, CheckCircle, Clock, MessageSquare, FileText, Target, AlertCircle, Plus, Edit, Save, X } from 'lucide-react';
+import { ArrowLeft, User, Building, Mail, Phone, Calendar, Upload, Download, CheckCircle, Clock, MessageSquare, FileText, Target, AlertCircle, Plus, Edit, Save, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase, Profile } from '../../lib/supabase';
 import { DocumentUpload } from './DocumentUpload';
+import OnboardingTasks from '../client/OnboardingTasks';
 
 interface UserProfileProps {
   userId: string;
@@ -393,6 +394,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userId, onBack }) => {
           {[
             { id: 'overview', label: 'Overview', icon: User },
             { id: 'tasks', label: 'Tasks', icon: Target },
+            { id: 'client-tasks', label: 'Client Tasks View', icon: CheckCircle },
             { id: 'documents', label: 'Documents', icon: FileText }
           ].map(({ id, label, icon: Icon }) => (
             <button
@@ -607,6 +609,35 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userId, onBack }) => {
           </div>
         </div>
       )}
+
+        {activeTab === 'client-tasks' && (
+          <div className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+              <div className="flex items-center">
+                <CheckCircle className="w-5 h-5 text-blue-600 mr-2" />
+                <div>
+                  <h4 className="font-semibold text-blue-800">Client Task View</h4>
+                  <p className="text-blue-700 text-sm">This shows exactly what the client sees in their dashboard</p>
+                </div>
+              </div>
+            </div>
+            
+            {onboarding ? (
+              <OnboardingTasks 
+                clientId={userId} 
+                onboardingId={onboarding.id} 
+              />
+            ) : (
+              <div className="bg-white rounded-lg shadow-sm border p-6 text-center">
+                <AlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Onboarding Found</h3>
+                <p className="text-gray-600">
+                  This client doesn't have an active onboarding process yet.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
       {activeTab === 'documents' && (
         <div className="space-y-6">
