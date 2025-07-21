@@ -535,37 +535,38 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
     if (!onboardingId) return;
     
     try {
+      console.log('Adding new task to category:', category, 'onboarding ID:', onboardingId);
+      
       const categoryTasks = tasks.filter(t => t.category === category);
       const maxSortOrder = Math.max(...categoryTasks.map(t => t.sort_order), -1);
       
+      // Use the admin function to add the task
       const { data, error } = await supabase
-        .from('onboarding_tasks')
-        .insert({
-          onboarding_id: onboardingId,
-          category: category,
-          task_name: 'New Task',
-          task_description: 'Task description',
-          task_owner: 'CLIENT',
-          status: 'not_started',
-          priority: 'medium',
-          sort_order: maxSortOrder + 1,
-          due_date: null,
-          metadata: {}
-        })
-        .select()
-        .single();
+        .rpc('admin_add_task', {
+          p_onboarding_id: onboardingId,
+          p_category: category,
+          p_task_name: 'New Task',
+          p_task_description: 'Task description',
+          p_task_owner: 'CLIENT',
+          p_priority: 'medium',
+          p_sort_order: maxSortOrder + 1
+        });
 
       if (error) throw error;
       
+      console.log('Task added successfully:', data);
+      
       if (data) {
-        setTasks(prev => [...prev, data]);
+        // Refresh tasks to get the updated list
+        await fetchTasks();
       }
+      
       setToastMessage('New task added');
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
     } catch (error) {
       console.error('Error adding task:', error);
-      setToastMessage('Failed to add task');
+      setToastMessage(`Failed to add task: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
     }
