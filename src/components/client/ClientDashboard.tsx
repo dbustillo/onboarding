@@ -101,10 +101,12 @@ const ClientDashboard: React.FC = () => {
   // Order categories based on the onboarding flow
   const categoryOrder = [
     'Pre-Onboarding',
-    'Tech & Marketplace Integration',
+    'Tech & Marketplace Integration', 
     'Tech & Integrations',
     'Inventory & Inbounding',
+    'Inventory & Inbounding',
     'Pilot Run & User Acceptance (UAT)',
+    'Pilot Run & User Acceptance Testing',
     'GO LIVE'
   ];
 

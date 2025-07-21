@@ -51,9 +51,11 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
   const categoryOrder = [
     'Pre-Onboarding',
     'Tech & Marketplace Integration',
-    'Tech & Integrations',
+    'Tech & Integrations', 
+    'Inventory & Inbounding',
     'Inventory & Inbounding',
     'Pilot Run & User Acceptance (UAT)',
+    'Pilot Run & User Acceptance Testing',
     'GO LIVE'
   ];
 
