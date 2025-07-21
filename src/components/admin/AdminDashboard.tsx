@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Shield, Users, ClipboardList, Settings, LogOut, CheckCircle, XCircle, Clock, Mail, Building, Phone, User, AlertCircle, FileText, Plus, Loader2 } from 'lucide-react';
+import { Shield, Users, ClipboardList, Settings, LogOut, CheckCircle, XCircle, Clock, Mail, Building, Phone, User, AlertCircle, FileText, Plus, Loader2, Calendar } from 'lucide-react';
 import { supabase, Profile } from '../../lib/supabase';
 import { UserProfile } from './UserProfile';
 import { TaskTemplateManager } from './TaskTemplateManager';
