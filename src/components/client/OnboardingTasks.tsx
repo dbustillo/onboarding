@@ -323,7 +323,9 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
   const [taskNotes, setTaskNotes] = useState<Record<string, string>>({});
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState<string>('');
+  const [saving, setSaving] = useState(false);
   const [editingTask, setEditingTask] = useState<string | null>(null);
+  const [editingTaskData, setEditingTaskData] = useState<Partial<Task>>({});
   const [editingDates, setEditingDates] = useState<Record<string, { target: string; actual: string }>>({});
   const [editingTaskData, setEditingTaskData] = useState<Record<string, {
     task_name: string;
@@ -487,6 +489,96 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
     } catch (error) {
       console.error('Error updating task notes:', error);
       setToastMessage('Failed to update notes');
+
+  const updateTask = async (taskId: string, updates: Partial<Task>) => {
+    try {
+      setSaving(true);
+      const { error } = await supabase
+        .from('onboarding_tasks')
+        .update(updates)
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      // Update local state
+      setTasks(prev => prev.map(task => 
+        task.id === taskId ? { ...task, ...updates } : task
+      ));
+      
+      showToastMessage('Task updated successfully');
+      setEditingTask(null);
+      setEditingTaskData({});
+    } catch (error) {
+      console.error('Error updating task:', error);
+      showToastMessage('Failed to update task');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('onboarding_tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      setTasks(prev => prev.filter(task => task.id !== taskId));
+      showToastMessage('Task deleted successfully');
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      showToastMessage('Failed to delete task');
+    }
+  };
+
+  const addNewTask = async (category: string) => {
+    if (!onboardingId) return;
+    
+    try {
+      const categoryTasks = tasks.filter(t => t.category === category);
+      const maxSortOrder = Math.max(...categoryTasks.map(t => t.sort_order), -1);
+      
+      const { data, error } = await supabase
+        .from('onboarding_tasks')
+        .insert({
+          onboarding_id: onboardingId,
+          category,
+          task_name: 'New Task',
+          task_description: 'Task description',
+          task_owner: 'CLIENT',
+          status: 'not_started',
+          priority: 'medium',
+          sort_order: maxSortOrder + 1,
+          metadata: {}
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setTasks(prev => [...prev, data]);
+      showToastMessage('New task added');
+    } catch (error) {
+      console.error('Error adding task:', error);
+      showToastMessage('Failed to add task');
+    }
+  };
+
+  const startEditing = (task: Task) => {
+    setEditingTask(task.id);
+    setEditingTaskData({
+      task_name: task.task_name,
+      task_description: task.task_description,
+      priority: task.priority,
+      task_owner: task.task_owner,
+      status: task.status,
+      due_date: task.due_date
+    });
+  };
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
     }
@@ -754,6 +846,18 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">{category}</h3>
+                    {isAdminView && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addNewTask(category);
+                        }}
+                        className="flex items-center px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add Task
+                      </button>
+                    )}
                     <div className="flex items-center mt-1">
                       <div className="w-32 bg-gray-200 rounded-full h-2.5 mr-2">
                         <div className="bg-gray-300 h-2.5 rounded-full" style={{ width: '0%' }}></div>
