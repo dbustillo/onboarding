@@ -1011,7 +1011,8 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                               </div>
                             )}
                           </div>
-                          )}
+                        </div>
+                      )}
                           
                           {/* Notes Section */}
                           <div className="mt-4 border-t pt-4">
