@@ -887,7 +887,7 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                 ) : (
                   <ChevronDown className="w-5 h-5 text-gray-500" />
                 )}
-              </div>
+                {isAdminView && editingTaskData[task.id] ? (
             </button>
             
             {/* Tasks List */}
@@ -1112,6 +1112,13 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                                   className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
                                 >
                                   Cancel
+                  <button
+                    onClick={() => addNewTask(task.category)}
+                    className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+                    title="Add New Task"
+                  >
+                    Add
+                  </button>
                                 </button>
                               </div>
                             ) : (
@@ -1125,7 +1132,7 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                           </div>
                           
                           {editingTask === task.id ? (
-                            <textarea
+              {isAdminView && editingTaskData[task.id] ? (
                               value={taskNotes[task.id] || ''}
                               onChange={(e) => setTaskNotes({...taskNotes, [task.id]: e.target.value})}
                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
@@ -1144,7 +1151,7 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                         </div>
                       </div>
                     </div>
-                  </div>
+            {isAdminView && editingTaskData[task.id] && (
                 ))}
                 
                 {groupedTasks[category]?.length === 0 && (
@@ -1169,6 +1176,21 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
             
             {/* Add Task Button for Admin (when category is expanded and has tasks) */}
             {isAdminView && expandedCategories[category] && groupedTasks[category]?.length > 0 && (
+                  <button
+                    onClick={() => setEditingTaskData(prev => ({
+                      ...prev,
+                      [task.id]: {
+                        task_name: task.task_name,
+                        task_description: task.task_description || '',
+                        priority: task.priority,
+                        task_owner: task.task_owner
+                      }
+                    }))}
+                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                    title="Edit Task"
+                  >
+                    Edit
+                  </button>
               <div className="p-4 border-t border-gray-200 bg-gray-50">
                 <button
                   onClick={() => addNewTask(category)}
@@ -1198,4 +1220,4 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
   );
 };
 
-export default OnboardingTasks;
+            {isAdminView && editingTaskData[task.id] && (
