@@ -212,6 +212,7 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
 
   if (!onboardingId || tasks.length === 0) {
     return (
+      <>
       <div className="space-y-6">
         {/* Show the same category structure as when tasks exist, but empty */}
         {[
@@ -272,7 +273,7 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
           </div>
         )}
         </div>
-      </div>
+      </>
     );
   }
 
