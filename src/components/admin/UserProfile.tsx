@@ -4,7 +4,7 @@ import { ArrowLeft, User, Building, Mail, Phone, Calendar, Upload, Download, Che
 import { supabase, Profile } from '../../lib/supabase';
 import { DocumentUpload } from './DocumentUpload';
 import { AdminTaskManager } from './AdminTaskManager';
-import { OnboardingTasks } from '../client/OnboardingTasks';
+import OnboardingTasks from '../client/OnboardingTasks';
 
 interface UserProfileProps {
   userId: string;
