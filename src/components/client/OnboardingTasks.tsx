@@ -748,7 +748,6 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                             </div>
                           </div>
                         </div>
-                      </div>
                     </div>
                   ))}
                 </div>
@@ -1064,6 +1063,7 @@ const OnboardingTasks: React.FC<OnboardingTasksProps> = ({ clientId, onboardingI
                             </div>
                           )}
                         </div>
+                       </>
                       </>
                       )}
                     </div>
